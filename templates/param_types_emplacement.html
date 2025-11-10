@@ -1,0 +1,43 @@
+@app.route("/api/types_emplacement_data")
+def api_types_emplacement_data():
+    query = f"SELECT * FROM `{PROJECT_ID}.{DATASET_ID}.TblTypeEmplacement`"
+    df = client.query(query).to_dataframe()
+    return jsonify(df.to_dict(orient="records"))
+
+@app.route("/api/types_emplacement_get")
+def api_types_emplacement_get():
+    type_ = request.args.get("type")
+    query = f"SELECT * FROM `{PROJECT_ID}.{DATASET_ID}.TblTypeEmplacement` WHERE TypeEmplacement = @type"
+    job_config = bigquery.QueryJobConfig(
+        query_parameters=[bigquery.ScalarQueryParameter("type", "STRING", type_)]
+    )
+    df = client.query(query, job_config=job_config).to_dataframe()
+    if df.empty:
+        return jsonify({"error": "not found"}), 404
+    return jsonify(df.iloc[0].to_dict())
+
+@app.route("/api/types_emplacement_add", methods=["POST"])
+def api_types_emplacement_add():
+    data = request.get_json()
+    type_ = data.get("type")
+    client.query(f"""
+        MERGE `{PROJECT_ID}.{DATASET_ID}.TblTypeEmplacement` T
+        USING (SELECT '{type_}' AS TypeEmplacement) S
+        ON T.TypeEmplacement = S.TypeEmplacement
+        WHEN MATCHED THEN UPDATE SET
+          DesignationType='{data.get("designation","")}',
+          Longueur={data.get("longueur","NULL")},
+          Largeur={data.get("largeur","NULL")},
+          Hauteur={data.get("hauteur","NULL")},
+          PoidsLimite={data.get("poids","NULL")}
+        WHEN NOT MATCHED THEN INSERT (TypeEmplacement,DesignationType,Longueur,Largeur,Hauteur,PoidsLimite)
+        VALUES('{type_}','{data.get("designation","")}',{data.get("longueur","NULL")},{data.get("largeur","NULL")},{data.get("hauteur","NULL")},{data.get("poids","NULL")})
+    """).result()
+    return jsonify({"status":"success","message":"✅ Type ajouté ou mis à jour."})
+
+@app.route("/api/types_emplacement_delete", methods=["DELETE"])
+def api_types_emplacement_delete():
+    data = request.get_json()
+    type_ = data.get("type")
+    client.query(f"DELETE FROM `{PROJECT_ID}.{DATASET_ID}.TblTypeEmplacement` WHERE TypeEmplacement='{type_}'").result()
+    return jsonify({"status":"success","message":"🗑 Type supprimé."})

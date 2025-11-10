@@ -1,0 +1,286 @@
+{% extends "base.html" %}
+{% block title %}Détails des emplacements – Slottix{% endblock %}
+
+{% block content %}
+<div class="card shadow-lg">
+  <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+    <h2 class="h5 mb-0">📦 Détails des emplacements</h2>
+    <div class="d-flex align-items-center">
+      <a href="/detail_emplacement_modif_masse"
+         class="btn btn-secondary btn-sm"
+         style="margin-right: 40px;">🧰 Modification en masse</a>
+      <div class="d-flex gap-2">
+        <button id="applyFilters" class="btn btn-light btn-sm">🔍 Filtrer</button>
+        <button id="resetFilters" class="btn btn-outline-light btn-sm">🧹 Réinitialiser</button>
+        <button id="saveChanges" class="btn btn-warning btn-sm fw-bold">💾 Enregistrer les modifications</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card-body" style="padding:10px;">
+    <div class="table-responsive" style="overflow-x:auto; width:100%;">
+      <table id="detailTable" class="table table-striped table-hover table-sm align-middle text-center"
+             style="min-width:1400px; font-size:0.8rem;">
+        <thead class="table-dark">
+          <tr>
+            <th>Zone</th><th>Allée</th><th>Dépl.</th><th>Niv.</th>
+            <th>Long.</th><th>Larg.</th><th>Haut.</th>
+            <th>Pds Total limit</th><th>Pds Unit.limit</th>
+            <th>X</th><th>Y</th><th>Z</th>
+            <th>Type 1</th><th>Type 2</th><th>Type 3</th>
+            <th>Palette</th>
+          </tr>
+
+          <!-- ✅ Filtres uniquement sur Zone / Allée / Dépl. / Niveau -->
+          <tr class="filter-row">
+            <th><input type="text" placeholder="Zone" class="form-control form-control-sm flt-zone"></th>
+            <th><input type="text" placeholder="Allée" class="form-control form-control-sm flt-allee"></th>
+            <th><input type="text" placeholder="Dépl." class="form-control form-control-sm flt-dep"></th>
+            <th><input type="text" placeholder="Niveau" class="form-control form-control-sm flt-niv"></th>
+            <th colspan="12"></th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
+
+<style>
+  #detailTable thead tr.filter-row th input { text-align: center; }
+
+  /* Colonnes étroites */
+  #detailTable th:nth-child(1), #detailTable td:nth-child(1),
+  #detailTable th:nth-child(2), #detailTable td:nth-child(2),
+  #detailTable th:nth-child(3), #detailTable td:nth-child(3),
+  #detailTable th:nth-child(4), #detailTable td:nth-child(4) {
+    width: 60px;
+    min-width: 60px;
+  }
+
+  /* Colonnes normales (par défaut) */
+  #detailTable th, #detailTable td {
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    overflow: hidden;
+  }
+
+  /* Colonnes élargies */
+  #detailTable th:nth-child(10), #detailTable td:nth-child(10),
+  #detailTable th:nth-child(11), #detailTable td:nth-child(11),
+  #detailTable th:nth-child(12), #detailTable td:nth-child(12) {
+    width: 120px;
+    min-width: 120px;
+  }
+
+  #detailTable th:nth-child(13), #detailTable td:nth-child(13),
+  #detailTable th:nth-child(14), #detailTable td:nth-child(14),
+  #detailTable th:nth-child(15), #detailTable td:nth-child(15),
+  #detailTable th:nth-child(16), #detailTable td:nth-child(16) {
+    width: 160px;
+    min-width: 160px;
+  }
+
+  /* ✅ Centrage parfait de la case Palette sans changer son style */
+  #detailTable td:nth-child(16) {
+    text-align: center;
+    vertical-align: middle;
+  }
+  #detailTable td:nth-child(16) .form-check-input {
+    display: inline-block;
+    margin: 0 auto;
+    position: relative;
+    top: 0;
+  }
+</style>
+
+<!-- JS -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
+
+<script>
+$(function() {
+
+  let CURRENT_FILTERS = { zone:"", allee:"", deplacement_from:"", deplacement_to:"", niveau_from:"", niveau_to:"" };
+
+  function parseRange(v){
+    if(!v)return{from:"",to:""};
+    const s=String(v).trim(),m=s.match(/^\s*(-?\d+)\s*[-–]\s*(-?\d+)\s*$/);
+    if(m)return{from:m[1],to:m[2]};
+    if(/^-?\d+$/.test(s))return{from:s,to:s};
+    return{from:"",to:""};
+  }
+
+  let TYPE_HIER={},TYPE1_LIST=[],TYPE2_LIST=[],TYPE3_LIST=[];
+  let listsLoaded = false;
+
+  async function loadListsOnce(){
+    if(listsLoaded) return;
+    const r=await fetch("/api/detail_emplacement/lists");
+    const j=await r.json();
+
+    TYPE_HIER=j.types||{};
+    TYPE1_LIST=Object.keys(TYPE_HIER||{});
+    const t2set=new Set(),t3set=new Set();
+    for(const t1 in TYPE_HIER){
+      for(const t2 in TYPE_HIER[t1]){
+        t2set.add(t2);
+        (TYPE_HIER[t1][t2]||[]).forEach(v=>t3set.add(v));
+      }
+    }
+    TYPE2_LIST=Array.from(t2set).sort();
+    TYPE3_LIST=Array.from(t3set).sort();
+    listsLoaded = true;
+  }
+
+  const modified=new Map();
+
+  const table=$('#detailTable').DataTable({
+    processing:true,serverSide:true,deferRender:true,orderCellsTop:true,
+    ajax:{
+      url:"{{ url_for('detail_emplacement.data_detail_emplacement') }}",
+      type:"GET",
+      data:d=>Object.assign(d,CURRENT_FILTERS),
+      dataSrc:json=>{
+        if(!json || !Array.isArray(json.data)) return [];
+        return json.data.map(r=>({ Palette:false, ...r }));
+      }
+    },
+    columns:[
+      {data:'Zone'},{data:'Allee'},{data:'Deplacement'},{data:'Niveau'},
+      {data:'longueur'},{data:'largeur'},{data:'hauteur'},
+      {data:'PoidsLimiteTotal'},{data:'PoidsLimiteUnitaire'},
+      {data:'X'},{data:'Y'},{data:'Z'},
+      {data:'Type1'},{data:'Type2'},{data:'Type3'},{data:'Palette'}
+    ],
+    pageLength:50,scrollY:"600px",scrollCollapse:true,paging:true,
+    order:[[0,'asc'],[1,'asc'],[2,'asc'],[3,'asc']],
+    dom:'Bfrtip',
+    buttons:[
+      {extend:'excelHtml5',text:'📊 Export Excel (filtré)'},
+      {extend:'csvHtml5',text:'📄 Export CSV (filtré)'}
+    ],
+    language:{url:"https://cdn.datatables.net/plug-ins/1.13.6/i18n/fr-FR.json"},
+    drawCallback:async function(){
+      await loadListsOnce();
+      const api=this.api();
+      api.rows({page:'current'}).every(function(){
+        const d=this.data(),$tr=$(this.node()),tds=$tr.children('td');
+        function setInput(i,v){tds.eq(i).html(`<input type="text" class="form-control form-control-sm text-center editable" value="${v??''}">`);}
+        setInput(8,d.PoidsLimiteUnitaire);setInput(9,d.X);setInput(10,d.Y);setInput(11,d.Z);
+
+        const t1=d.Type1||"",t2=d.Type2||"";
+        const t2List=t1?Object.keys(TYPE_HIER[t1]||{}):[];
+        const t3List=(t1&&t2)?(TYPE_HIER[t1]?.[t2]||[]):[];
+
+        function renderSelectSimple(list,value){
+          let html='<select class="form-select form-select-sm editable"><option value="">--</option>';
+          list.forEach(v=>html+=`<option value="${v}" ${String(v)===String(value)?'selected':''}>${v}</option>`);
+          return html+'</select>';
+        }
+
+        tds.eq(12).html(renderSelectSimple(TYPE1_LIST,d.Type1));
+        tds.eq(13).html(renderSelectSimple(t2List,d.Type2));
+        tds.eq(14).html(renderSelectSimple(t3List,d.Type3));
+        const checked = d.Palette ? 'checked' : '';
+        tds.eq(15).html(`<input type="checkbox" class="form-check-input editable" ${checked}>`);
+      });
+    }
+  });
+
+  // --- Dépendances Type1 → Type2 → Type3
+  $('#detailTable tbody').on('change','td:nth-child(13) select',function(){
+    const $tr=$(this).closest('tr');
+    const newT1=$(this).val()||"";
+    const t2Select=$tr.find('td:nth-child(14) select');
+    const t3Select=$tr.find('td:nth-child(15) select');
+    const t2Opts=newT1?Object.keys(TYPE_HIER[newT1]||{}):[];
+    t2Select.html('<option value="">--</option>');
+    t2Opts.sort().forEach(v=>t2Select.append(`<option value="${v}">${v}</option>`));
+    t2Select.val('');t3Select.html('<option value="">--</option>').val('');
+    $tr.addClass('table-warning');
+  });
+
+  $('#detailTable tbody').on('change','td:nth-child(14) select',function(){
+    const $tr=$(this).closest('tr');
+    const t1=$tr.find('td:nth-child(13) select').val()||"";
+    const newT2=$(this).val()||"";
+    const t3Select=$tr.find('td:nth-child(15) select');
+    const t3Opts=(t1&&newT2)?(TYPE_HIER[t1]?.[newT2]||[]):[];
+    t3Select.html('<option value="">--</option>');
+    t3Opts.sort().forEach(v=>t3Select.append(`<option value="${v}">${v}</option>`));
+    t3Select.val('');
+    $tr.addClass('table-warning');
+  });
+
+  // --- Marquer lignes modifiées
+  $('#detailTable tbody').on('change','.editable',function(){
+    const $tr=$(this).closest('tr');
+    const cells=$tr.children('td');
+    const updated={
+      Zone:cells.eq(0).text().trim(),Allee:cells.eq(1).text().trim(),
+      Deplacement:cells.eq(2).text().trim(),Niveau:cells.eq(3).text().trim(),
+      PoidsLimiteUnitaire:cells.eq(8).find('input').val(),
+      X:cells.eq(9).find('input').val(),Y:cells.eq(10).find('input').val(),Z:cells.eq(11).find('input').val(),
+      Type1:cells.eq(12).find('select').val(),Type2:cells.eq(13).find('select').val(),
+      Type3:cells.eq(14).find('select').val(),
+      Palette:cells.eq(15).find('input[type=checkbox]').is(':checked')
+    };
+    const key=`${updated.Zone}_${updated.Allee}_${updated.Deplacement}_${updated.Niveau}`;
+    modified.set(key,updated);
+    $tr.addClass('table-warning');
+  });
+
+  // --- Filtres simples
+  $('#applyFilters').on('click',function(e){
+    e.preventDefault();
+    const zone=$('.flt-zone').val()?.trim().toLowerCase()||"",
+          allee=$('.flt-allee').val()?.trim().toLowerCase()||"",
+          depRaw=$('.flt-dep').val()?.trim()||"",
+          nivRaw=$('.flt-niv').val()?.trim()||"";
+    const dep=parseRange(depRaw),niv=parseRange(nivRaw);
+    CURRENT_FILTERS={zone,allee,deplacement_from:dep.from,deplacement_to:dep.to,niveau_from:niv.from,niveau_to:niv.to};
+    table.ajax.reload(null,false);
+  });
+
+  $('#resetFilters').on('click',function(e){
+    e.preventDefault();
+    $('#detailTable thead tr.filter-row th input').val('');
+    CURRENT_FILTERS={zone:"",allee:"",deplacement_from:"",deplacement_to:"",niveau_from:"",niveau_to:""};
+    table.ajax.reload(null,false);
+  });
+
+  // --- Enregistrer
+  $('#saveChanges').on('click',async function(){
+    const changes=Array.from(modified.values());
+    if(!changes.length){alert("Aucune modification à enregistrer.");return;}
+    try{
+      const r=await fetch("/api/detail_emplacement/update",{
+        method:"POST",headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({changes})
+      });
+      const j=await r.json();
+      if(r.ok&&j.status==="success"){
+        alert(j.message||`✅ ${changes.length} ligne(s) enregistrée(s).`);
+        modified.clear();$('#detailTable tbody tr').removeClass('table-warning');
+      } else {
+        alert(j.message||"❌ Erreur lors de l’enregistrement.");
+      }
+    }catch(e){console.error(e);alert("❌ Erreur réseau.");}
+  });
+
+});
+</script>
+{% endblock %}

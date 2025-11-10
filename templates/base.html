@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{{ title if title else "Slottix" }}</title>
+
+  <!-- ✅ Bootstrap + DataTables CSS -->
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css" rel="stylesheet">
+
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
+      overflow-x: hidden;
+      background: #f8f9fa;
+    }
+    #layout { display: grid; grid-template-rows: 50px 1fr; height: 100vh; }
+    #header {
+      display: flex; justify-content: space-between; align-items: center;
+      background: #2980b9; color: #fff; padding: 0 20px;
+      font-size: 18px; font-weight: bold;
+    }
+    #header .actions button {
+      margin-left: 10px; background: #1f6391; border: none;
+      padding: 6px 12px; border-radius: 4px; cursor: pointer;
+      color: #fff; font-size: 14px;
+    }
+    #header .actions button:hover { background: #164d70; }
+    #main { display: grid; grid-template-columns: 260px minmax(0, 1fr); transition: grid-template-columns 0.3s ease; height: 100%; }
+    #main.collapsed { grid-template-columns: 30px minmax(0, 1fr); }
+    #sidebar {
+      background: #2c3e50; color: #ecf0f1; overflow-y: auto;
+      padding-top: 10px; position: relative; box-sizing: border-box;
+    }
+    #sidebar h2 { font-size: 18px; margin: 15px 0; text-align: center; }
+    #main.collapsed #sidebar h2,
+    #main.collapsed #sidebar h3,
+    #main.collapsed #sidebar ul,
+    #main.collapsed #sidebar .home-btn { opacity: 0; pointer-events: none; }
+    #toggle-btn {
+      position: absolute; top: 15px; left: -1px;
+      background: #2980b9; border: none; border-radius: 50%;
+      width: 30px; height: 30px; cursor: pointer;
+      color: #fff; font-size: 16px; line-height: 30px; text-align: center;
+      box-shadow: 0 0 6px rgba(0,0,0,0.4); transition: transform 0.3s, left 0.3s; z-index: 1000;
+    }
+    #toggle-btn:hover { background: #1f6391; }
+    #main.collapsed #toggle-btn { transform: rotate(180deg); left: -1px; }
+    .home-btn {
+      display: block; width: 90%; margin: 0 auto 10px auto; padding: 8px;
+      background: #2980b9; color: #fff; text-align: center; border-radius: 4px;
+      text-decoration: none; font-size: 14px;
+    }
+    .home-btn:hover { background: #1f6391; }
+    #sidebar h3 {
+      cursor: pointer; margin: 10px 0; padding: 10px;
+      background: #34495e; border-radius: 4px; font-size: 15px;
+    }
+    #sidebar ul {
+      list-style: none; padding-left: 10px; margin: 0;
+      background: #3c5066; border-radius: 4px; overflow: hidden;
+      max-height: 0; transition: max-height 0.3s ease-out, padding 0.3s ease-out;
+    }
+    #sidebar ul.show { padding: 5px 10px; max-height: 800px; }
+    #sidebar ul li a {
+      text-decoration: none; color: #ecf0f1;
+      display: block; padding: 6px 8px; border-radius: 4px; font-size: 14px;
+    }
+    #sidebar ul li a:hover { background: #2980b9; color: #fff; }
+    #sidebar ul li a.active { background: #007bff; color: #fff; }
+    #content { padding: 20px; box-sizing: border-box; min-width: 0; }
+    .btn-success, .btn-success:hover, .btn-success:focus, .btn-success:active {
+      background-color: #2980b9 !important;
+      border-color: #2980b9 !important;
+      color: #fff !important;
+    }
+  </style>
+</head>
+<body>
+
+<div id="layout">
+  <!-- Bandeau -->
+  <header id="header">
+    <div>{{ page_title if page_title else title if title else "Slottix" }}</div>
+    <div class="actions">
+      <button onclick="history.back()">⬅ Retour</button>
+    </div>
+  </header>
+
+  <!-- Zone principale -->
+  <div id="main">
+    <aside id="sidebar">
+      <button id="toggle-btn" onclick="toggleSidebar()">◀</button>
+      <a href="{{ url_for('index') }}" class="home-btn">🏠 Accueil</a>
+
+      <!-- Déplacements -->
+      <h3 onclick="toggleMenu('submenuDeplacements')">📊 Déplacements</h3>
+      <ul id="submenuDeplacements" class="submenu {% if request.endpoint in ['gains_reels','ecart_previsionnel','deplacements_a_realiser','planif_deplacements','histo_deplacements'] %}show{% endif %}">
+        <li><a class="{% if request.endpoint == 'gains_reels' %}active{% endif %}" href="{{ url_for('gains_reels') }}">💰 Gains réels obtenus</a></li>
+        <li><a class="{% if request.endpoint == 'ecart_previsionnel' %}active{% endif %}" href="{{ url_for('ecart_previsionnel') }}">📈 Écart prévisionnel vs réel</a></li>
+        <li><a class="{% if request.endpoint == 'deplacements_a_realiser' %}active{% endif %}" href="{{ url_for('deplacements_a_realiser') }}">🚚 Déplacements à réaliser</a></li>
+        <li><a class="{% if request.endpoint == 'planif_deplacements' %}active{% endif %}" href="{{ url_for('planif_deplacements') }}">🗓️ Planification</a></li>
+        <li><a class="{% if request.endpoint == 'histo_deplacements' %}active{% endif %}" href="{{ url_for('histo_deplacements') }}">📜 Historique</a></li>
+      </ul>
+
+      <!-- Approvisionnements -->
+      <h3 onclick="toggleMenu('submenuAppro')">📦 Approvisionnements</h3>
+      <ul id="submenuAppro" class="submenu {% if request.endpoint in ['suivi_appro'] %}show{% endif %}">
+        <li><a class="{% if request.endpoint == 'suivi_appro' %}active{% endif %}" href="{{ url_for('suivi_appro') }}">📦 Suivi approvisionnements</a></li>
+      </ul>
+
+      <!-- Anomalies -->
+      <h3 onclick="toggleMenu('submenuAnomalies')">⚠️ Anomalies</h3>
+      <ul id="submenuAnomalies" class="submenu {% if request.endpoint in ['anomalie_dimensions','anomalie_cheminement','anomalie_qte_picking','anomalie_picking_hors_circuit','anomalie_qte_mini','anomalie_qte_maxi'] %}show{% endif %}">
+        <li><a class="{% if request.endpoint == 'anomalie_dimensions' %}active{% endif %}" href="{{ url_for('anomalie_dimensions') }}">📐 Dimensions</a></li>
+        <li><a class="{% if request.endpoint == 'anomalie_cheminement' %}active{% endif %}" href="{{ url_for('anomalie_cheminement') }}">🛤️ Cheminement</a></li>
+        <li><a class="{% if request.endpoint == 'anomalie_qte_picking' %}active{% endif %}" href="{{ url_for('anomalie_qte_picking') }}">📦 Qté picking > max</a></li>
+        <li><a class="{% if request.endpoint == 'anomalie_picking_hors_circuit' %}active{% endif %}" href="{{ url_for('anomalie_picking_hors_circuit') }}">🚫 Picking hors circuit</a></li>
+        <li><a class="{% if request.endpoint == 'anomalie_qte_mini' %}active{% endif %}" href="{{ url_for('anomalie_qte_mini') }}">🔻 Qté mini erronée</a></li>
+        <li><a class="{% if request.endpoint == 'anomalie_qte_maxi' %}active{% endif %}" href="{{ url_for('anomalie_qte_maxi') }}">🔺 Qté maxi erronée</a></li>
+      </ul>
+
+      <!-- Produits -->
+      <h3 onclick="toggleMenu('submenuProduits')">📍 Produits</h3>
+      <ul id="submenuProduits" class="submenu {% if request.endpoint in ['positionnement_nouveaux_produits','reservation_pickings_vides','param_projet','param_scenario'] %}show{% endif %}">
+        <li><a class="{% if request.endpoint == 'positionnement_nouveaux_produits' %}active{% endif %}" href="{{ url_for('positionnement_nouveaux_produits') }}">📍 Positionnement des nouveaux produits</a></li>
+        <li><a class="{% if request.endpoint == 'reservation_pickings_vides' %}active{% endif %}" href="{{ url_for('reservation_pickings_vides') }}">📂 Réservations des emplacements</a></li>
+        <li><a class="{% if request.endpoint == 'param_scenario' %}active{% endif %}" href="{{ url_for('param_scenario') }}">📑 Scénario</a></li>
+        <li><a class="{% if request.endpoint == 'param_projet' %}active{% endif %}" href="{{ url_for('param_projet') }}">📂 Projet</a></li>
+      </ul>
+
+      <!-- 🛒 Ventes exceptionnelles -->
+      <h3 onclick="toggleMenu('submenuVentes')">🛒 Ventes exceptionnelles</h3>
+      <ul id="submenuVentes" class="submenu {% if request.endpoint in ['ventes_ref','ventes_fournisseur','ventes_famille'] %}show{% endif %}">
+        <li><a href="{{ url_for('ventes_ref') }}" class="{% if request.endpoint == 'ventes_ref' %}active{% endif %}">📦 Ventes par référence</a></li>
+        <li><a href="{{ url_for('ventes_fournisseur') }}" class="{% if request.endpoint == 'ventes_fournisseur' %}active{% endif %}">🏭 Ventes par fournisseur</a></li>
+        <li><a href="{{ url_for('ventes_famille') }}" class="{% if request.endpoint == 'ventes_famille' %}active{% endif %}">📂 Ventes par famille produit</a></li>
+      </ul>
+
+      <!-- Paramètres -->
+      <h3 onclick="toggleMenu('submenuParam')">⚙️ Paramètres</h3>
+      <ul id="submenuParam" class="submenu {% if request.endpoint in ['param_import','historique_imports','imports_auto','bornage_circuits','groupes_circuit','productivite','emplacements','routes.localisation_routes','ia','rapports_mail','validation_transferts','lancement_calculs','parametres_types_emplacement_page'] %}show{% endif %}">
+        <li><a class="{% if request.endpoint == 'param_import' %}active{% endif %}" href="{{ url_for('param_import') }}">📥 Import manuel</a></li>
+        <li><a class="{% if request.endpoint == 'historique_imports' %}active{% endif %}" href="{{ url_for('historique_imports') }}">📜 Historique imports</a></li>
+        <li><a class="{% if request.endpoint == 'imports_auto' %}active{% endif %}" href="{{ url_for('imports_auto') }}">⏱️ Imports auto</a></li>
+        <li><a class="{% if request.endpoint == 'bornage_circuits' %}active{% endif %}" href="{{ url_for('bornage_circuits') }}">📏 Bornage circuits</a></li>
+        <li><a class="{% if request.endpoint == 'groupes_circuit' %}active{% endif %}" href="{{ url_for('groupes_circuit') }}">🔗 Groupes de circuits</a></li>
+        <li><a class="{% if request.endpoint == 'productivite' %}active{% endif %}" href="{{ url_for('productivite') }}">⚡ Productivité</a></li>
+        <li><a class="{% if request.endpoint == 'emplacements' %}active{% endif %}" href="{{ url_for('emplacements') }}">📋 Détails des emplacements</a></li>
+        <li><a class="{% if request.endpoint == 'parametres_types_emplacement' %}active{% endif %}" href="{{ url_for('parametres_types_emplacement') }}">🏷️ Types d’emplacement</a></li>
+        <li><a class="{% if request.endpoint == 'routes.page_localisation_routes' %}active{% endif %}"
+       href="{{ url_for('routes.page_localisation_routes') }}">🛣️ Routes</a></li>
+
+        <li><a class="{% if request.endpoint == 'ia' %}active{% endif %}" href="{{ url_for('ia') }}">🤖 IA</a></li>
+        <li><a class="{% if request.endpoint == 'rapports_mail' %}active{% endif %}" href="{{ url_for('rapports_mail') }}">📧 Rapports mail</a></li>
+        <li><a class="{% if request.endpoint == 'validation_transferts' %}active{% endif %}" href="{{ url_for('validation_transferts') }}">✅ Validation transferts</a></li>
+        <li><a class="{% if request.endpoint == 'lancement_calculs' %}active{% endif %}" href="{{ url_for('lancement_calculs') }}">⚙️ Lancement calculs</a></li>
+      </ul>
+
+      {% block sidebar_menus %}{% endblock %}
+    </aside>
+
+    <main id="content">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+</div>
+
+<!-- ✅ Scripts nécessaires (ordre important) -->
+<script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+
+<script>
+  function toggleMenu(id) {
+    const el = document.getElementById(id);
+    el.classList.toggle("show");
+  }
+  function toggleSidebar() {
+    const main = document.getElementById("main");
+    main.classList.toggle("collapsed");
+    const btn = document.getElementById("toggle-btn");
+    btn.innerHTML = main.classList.contains("collapsed") ? "▶" : "◀";
+    setTimeout(() => window.dispatchEvent(new Event("resize")), 320);
+  }
+</script>
+
+{% block extra_js %}{% endblock %}
+
+</body>
+</html>

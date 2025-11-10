@@ -1,0 +1,172 @@
+{% extends "base.html" %}
+{% block title %}Gestion des pictogrammes{% endblock %}
+
+{% block content %}
+<div class="card shadow-lg position-relative">
+  <div class="card-header bg-primary text-white">
+    <h2 class="h5 mb-0">🖼️ Gestion des pictogrammes</h2>
+  </div>
+
+  <!-- Zone des messages -->
+  <div id="toastContainer" class="position-absolute top-0 end-0 p-3" style="z-index:1055;"></div>
+
+  <div class="card-body">
+
+
+
+<!-- Styles locaux (ajustés pour alignement parfait) -->
+<style>
+  .picto-form {
+    padding: 14px 16px;
+    background: #f9fafb;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+    max-width: 700px; /* ✅ largeur contrôlée du bloc */
+  }
+  .picto-form .field {
+    margin-bottom: 12px;
+  }
+  .picto-form label {
+    display: block;
+    font-weight: 600;
+    color: #0d6efd;
+    margin-bottom: 4px;
+    font-size: 0.9rem;
+  }
+  .picto-form input[type="text"] {
+    width: calc(100% - 4px); /* ✅ ajuste pour éviter le débordement */
+    height: 36px;
+    padding: 4px 8px;
+    font-size: 0.9rem;
+    border: 1px solid #ced4da;
+    border-radius: 5px;
+    box-sizing: border-box; /* ✅ garantit que width inclut padding + border */
+  }
+  .picto-form .actions {
+    text-align: right;
+    margin-top: 6px;
+  }
+  .picto-form button {
+    font-size: 0.9rem;
+    padding: 6px 14px;
+  }
+</style>
+
+<!-- Formulaire d'ajout / modification -->
+<form method="POST" class="picto-form mx-auto shadow-sm">
+  <input type="hidden" name="action" value="upsert">
+
+  <div class="field">
+    <label for="CodePicto">Code pictogramme</label>
+    <input type="text" id="CodePicto" name="CodePicto" placeholder="Ex: P001" required>
+  </div>
+
+  <div class="field">
+    <label for="NomPicto">Nom pictogramme</label>
+    <input type="text" id="NomPicto" name="NomPicto" placeholder="Ex: Fragile" required>
+  </div>
+
+  <div class="actions">
+    <button type="submit" class="btn btn-success">➕ Ajouter</button>
+  </div>
+</form>
+
+<hr class="my-4">
+
+
+
+    <!-- Tableau -->
+    <div class="table-responsive">
+      <table id="pictoTable" class="table table-striped table-hover align-middle text-center">
+        <thead class="table-dark">
+          <tr>
+            <th>Code</th>
+            <th>Nom pictogramme</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in pictos %}
+          <tr data-code="{{ p.CodePicto }}">
+            <td class="align-middle fw-bold">{{ p.CodePicto }}</td>
+            <td>
+              <input type="text" class="form-control form-control-sm text-center" value="{{ p.NomPicto }}">
+            </td>
+            <td class="text-nowrap">
+              <button type="button" class="btn btn-sm btn-primary me-1 btnUpdate">💾</button>
+              <button type="button" class="btn btn-sm btn-danger btnDelete">🗑</button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+
+<!-- JS -->
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  const table = document.querySelector("#pictoTable");
+
+  // Affichage de toast Bootstrap
+  function showToast(message, type="info") {
+    const colors = {success: "bg-success", error: "bg-danger", info: "bg-info"};
+    const toast = document.createElement("div");
+    toast.className = `toast align-items-center text-white ${colors[type] || "bg-info"} border-0`;
+    toast.role = "alert";
+    toast.innerHTML = `
+      <div class="d-flex">
+        <div class="toast-body">${message}</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+      </div>`;
+    document.getElementById("toastContainer").appendChild(toast);
+    new bootstrap.Toast(toast, {delay: 2500}).show();
+  }
+
+  // 🔹 Update
+  table.addEventListener("click", e => {
+    if (e.target.classList.contains("btnUpdate")) {
+      const row = e.target.closest("tr");
+      const code = row.dataset.code;
+      const name = row.querySelector("input").value.trim();
+
+      fetch("/api/pictogrammes/update", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({action: "update", CodePicto: code, NomPicto: name})
+      })
+      .then(r => r.json())
+      .then(res => {
+        showToast(res.message, res.status === "success" ? "success" : "error");
+      })
+      .catch(() => showToast("Erreur de mise à jour", "error"));
+    }
+
+    // 🔹 Delete
+    if (e.target.classList.contains("btnDelete")) {
+      const row = e.target.closest("tr");
+      const code = row.dataset.code;
+      if (!confirm(`Supprimer ${code} ?`)) return;
+
+      fetch("/api/pictogrammes/update", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({action: "delete", CodePicto: code})
+      })
+      .then(r => r.json())
+      .then(res => {
+        if (res.status === "success") {
+          row.classList.add("table-danger");
+          setTimeout(() => row.remove(), 400);
+        }
+        showToast(res.message, res.status === "success" ? "info" : "error");
+      })
+      .catch(() => showToast("Erreur de suppression", "error"));
+    }
+  });
+});
+</script>
+{% endblock %}

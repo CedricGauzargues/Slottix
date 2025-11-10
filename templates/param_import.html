@@ -1,0 +1,104 @@
+{% extends "base.html" %}
+
+{% block title %}Imports manuels – Slottix{% endblock %}
+
+{% block content %}
+<div class="card shadow-lg">
+  <div class="card-header bg-primary text-white">
+    <h2 class="h4 mb-0">📂 Importer un fichier manuellement</h2>
+  </div>
+  <div class="card-body">
+    
+    <!-- Messages flash -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="mb-3">
+          {% for category, message in messages %}
+            <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show" role="alert">
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <!-- Formulaire -->
+    <form method="POST" enctype="multipart/form-data">
+      <div class="mb-3">
+        <label for="table" class="form-label">📂 Choisir une table importable</label>
+        <select name="table" id="table" class="form-select" required onchange="this.form.submit()">
+          <option value="">-- Sélectionner une table --</option>
+          {% for table in table_names %}
+            <option value="{{ table }}" {% if table == selected_table %}selected{% endif %}>
+              {{ table }}
+            </option>
+          {% endfor %}
+        </select>
+      </div>
+
+      <!-- Boutons export visibles si une table est sélectionnée -->
+      {% if selected_table %}
+      <div class="mb-5">
+        <a href="{{ url_for('export_schema', table_name=selected_table, format='excel') }}" 
+           class="btn btn-outline-success w-100 mb-2">
+          📊 Exporter trame (Excel)
+        </a>
+        <a href="{{ url_for('export_schema', table_name=selected_table, format='csv') }}" 
+           class="btn btn-outline-primary w-100 mb-2">
+          📄 Exporter trame (CSV)
+        </a>
+        <a href="{{ url_for('export_data', table_name=selected_table, format='excel') }}" 
+           class="btn btn-outline-success w-100 mb-2">
+          📊 Exporter données actuelles (Excel)
+        </a>
+        <a href="{{ url_for('export_data', table_name=selected_table, format='csv') }}" 
+           class="btn btn-outline-primary w-100">
+          📄 Exporter données actuelles (CSV)
+        </a>
+      </div>
+      {% endif %}
+
+
+<!-- Champ fichier descendu -->
+<div class="mb-4" style="margin-top: 60px;">
+  <label for="file" class="form-label">📄 Choisir un fichier à importer</label>
+  <input type="file" name="file" id="file" class="form-control" required>
+</div>
+
+<script>
+function confirmDelete(event) {
+    event.preventDefault(); // bloque le submit automatique
+    const nbLignes = document.getElementById('file').files.length ? 'les données existantes' : 'la table';
+    if (confirm(`⚠️ Voulez-vous vraiment supprimer ${nbLignes} avant l’import ?`)) {
+        // si oui, on soumet vraiment le formulaire
+        event.target.closest('form').submit();
+    } else {
+        alert("✅ Suppression annulée.");
+    }
+}
+</script>
+
+<!-- Bouton Importer centré et plus bas -->
+<div style="display: flex; justify-content: center; margin-top: 36px;">
+  <button type="submit" class="btn btn-danger" onclick="confirmDelete(event)">
+    🚀 Importer (et remplacer)
+</button>
+</div>
+
+
+    <!-- Aperçu -->
+    {% if preview %}
+      <hr class="my-4">
+      <h3 class="h5">🔎 Aperçu des données</h3>
+      <div class="table-responsive">
+        {{ preview|safe }}
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+
+
+
+{% endblock %}

@@ -1,0 +1,251 @@
+{% extends "base.html" %}
+{% block title %}Types d’emplacement{% endblock %}
+
+{% block content %}
+<div class="card shadow-lg position-relative">
+  <div class="card-header bg-primary text-white">
+    <h2 class="h5 mb-0">🏷️ Gestion des types d’emplacement</h2>
+  </div>
+
+  <!-- Zone des messages (toast Bootstrap) -->
+  <div id="toastContainer" class="position-absolute top-0 end-0 p-3" style="z-index:1055;"></div>
+
+  <div class="card-body">
+
+    <!-- Styles locaux (même style que pictogrammes) -->
+    <style>
+      .type-form {
+        padding: 14px 16px;
+        background: #f9fafb;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        max-width: 900px;
+      }
+      .type-form .field { margin-bottom: 12px; }
+      .type-form label {
+        display: block;
+        font-weight: 600;
+        color: #0d6efd;
+        margin-bottom: 4px;
+        font-size: 0.9rem;
+      }
+      .type-form input[type="text"] {
+        width: calc(100% - 4px);
+        height: 36px;
+        padding: 4px 8px;
+        font-size: 0.9rem;
+        border: 1px solid #ced4da;
+        border-radius: 5px;
+        box-sizing: border-box;
+      }
+      .table td input.form-control-sm {
+        min-width: 160px;
+      }
+    </style>
+
+    <!-- Formulaire d’ajout -->
+    <form method="POST" class="type-form mx-auto shadow-sm" id="addForm">
+      <input type="hidden" name="action" value="upsert">
+
+      <div class="row">
+        <div class="col-md-4 field">
+          <label for="Type1">Type 1</label>
+          <input type="text" id="Type1" name="Type1" placeholder="Ex: Convoyable" required>
+        </div>
+        <div class="col-md-4 field">
+          <label for="Type2">Type 2</label>
+          <input type="text" id="Type2" name="Type2" placeholder="Ex: Casier" disabled>
+        </div>
+        <div class="col-md-4 field">
+          <label for="Type3">Type 3</label>
+          <input type="text" id="Type3" name="Type3" placeholder="Ex: Simple / Double" disabled>
+        </div>
+      </div>
+
+      <div class="actions text-end mt-2">
+        <button type="submit" class="btn btn-success">➕ Ajouter</button>
+      </div>
+    </form>
+
+    <hr class="my-4">
+
+    <!-- Tableau -->
+    <div class="table-responsive">
+      <table id="typeTable" class="table table-striped table-hover align-middle text-center">
+        <thead class="table-dark">
+          <tr>
+            <th>Type 1</th>
+            <th>Type 2</th>
+            <th>Type 3</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for t in types_data %}
+          <tr data-type1="{{ t.Type1 }}" data-type2="{{ t.Type2 }}" data-type3="{{ t.Type3 }}">
+            <td><input type="text" class="form-control form-control-sm text-center" value="{{ t.Type1 }}"></td>
+            <td><input type="text" class="form-control form-control-sm text-center" value="{{ t.Type2 }}"></td>
+            <td><input type="text" class="form-control form-control-sm text-center" value="{{ t.Type3 }}"></td>
+            <td class="text-nowrap">
+              <button type="button" class="btn btn-sm btn-primary me-1 btnUpdate" title="Enregistrer">💾</button>
+              <button type="button" class="btn btn-sm btn-danger btnDelete" title="Supprimer">🗑</button>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+
+  </div>
+</div>
+
+<!-- JS -->
+<script>
+document.addEventListener("DOMContentLoaded", () => {
+  // ---------- Toast helper ----------
+  function showToast(message, type="info") {
+    const colors = {success: "bg-success", error: "bg-danger", info: "bg-info"};
+    const container = document.getElementById("toastContainer");
+    // 🧹 Nettoie les anciens toasts
+    container.innerHTML = "";
+
+    const toast = document.createElement("div");
+    toast.className = `toast align-items-center text-white ${colors[type] || "bg-info"} border-0`;
+    toast.role = "alert";
+    toast.innerHTML = `
+      <div class="d-flex">
+        <div class="toast-body">${message}</div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+      </div>`;
+    container.appendChild(toast);
+    new bootstrap.Toast(toast, {delay: 2500}).show();
+  }
+
+  // ---------- Dépendances du FORM haut (Type1 -> Type2 -> Type3) ----------
+  const T1 = document.getElementById("Type1");
+  const T2 = document.getElementById("Type2");
+  const T3 = document.getElementById("Type3");
+
+  function updateFormLocks() {
+    if (!T1.value.trim()) {
+      T2.disabled = true; T2.value = "";
+      T3.disabled = true; T3.value = "";
+    } else {
+      T2.disabled = false;
+      if (!T2.value.trim()) {
+        T3.disabled = true; T3.value = "";
+      } else {
+        T3.disabled = false;
+      }
+    }
+  }
+  T1.addEventListener("input", updateFormLocks);
+  T2.addEventListener("input", updateFormLocks);
+  updateFormLocks(); // init
+
+  // ---------- Dépendances par ligne du tableau ----------
+  const table = document.querySelector("#typeTable");
+  function setupRow(row) {
+    const c1 = row.children[0].querySelector("input");
+    const c2 = row.children[1].querySelector("input");
+    const c3 = row.children[2].querySelector("input");
+
+    const applyLocks = () => {
+      if (!c1.value.trim()) {
+        c2.disabled = true; c3.disabled = true;
+      } else {
+        c2.disabled = false;
+        if (!c2.value.trim()) {
+          c3.disabled = true;
+        } else {
+          c3.disabled = false;
+        }
+      }
+    };
+    applyLocks();
+    c1.addEventListener("input", applyLocks);
+    c2.addEventListener("input", applyLocks);
+  }
+  table.querySelectorAll("tbody tr").forEach(setupRow);
+
+  // ---------- UPDATE (💾) ----------
+  table.addEventListener("click", e => {
+    if (!e.target.classList.contains("btnUpdate")) return;
+    const row = e.target.closest("tr");
+    const oldType1 = row.dataset.type1;
+    const oldType2 = row.dataset.type2;
+    const oldType3 = row.dataset.type3;
+
+    const newType1 = row.children[0].querySelector("input").value.trim();
+    const newType2 = row.children[1].querySelector("input").value.trim();
+    const newType3 = row.children[2].querySelector("input").value.trim();
+
+    // Validations côté client (hiérarchie)
+    if (!newType1) {
+      showToast("❌ Le champ Type 1 est obligatoire.", "error");
+      return;
+    }
+    if (newType3 && !newType2) {
+      showToast("⚠️ Type 3 ne peut pas être renseigné sans Type 2.", "error");
+      return;
+    }
+
+    fetch("/api/types_empla/update", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({
+        action: "update",
+        oldType1, oldType2, oldType3,
+        newType1, newType2, newType3
+      })
+    })
+    .then(async r => {
+      const res = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(res.message || "Erreur serveur");
+      return res;
+    })
+    .then(res => {
+      showToast(res.message || "✅ Enregistrement effectué avec succès.", "success");
+      // met à jour les data-*
+      row.dataset.type1 = newType1;
+      row.dataset.type2 = newType2;
+      row.dataset.type3 = newType3;
+      // réapplique les verrous si besoin
+      setupRow(row);
+    })
+    .catch(err => showToast(err.message || "Erreur de mise à jour", "error"));
+  });
+
+  // ---------- DELETE (🗑) ----------
+  table.addEventListener("click", e => {
+    if (!e.target.classList.contains("btnDelete")) return;
+
+    const row = e.target.closest("tr");
+    const type1 = row.dataset.type1;
+    const type2 = row.dataset.type2;
+    const type3 = row.dataset.type3;
+
+    if (!confirm(`Supprimer ${type1} / ${type2} / ${type3} ?`)) return;
+
+    fetch("/api/types_empla/update", {
+      method: "POST",
+      headers: {"Content-Type": "application/json"},
+      body: JSON.stringify({ action: "delete", type1, type2, type3 })
+    })
+    .then(async r => {
+      const res = await r.json().catch(() => ({}));
+      if (!r.ok) throw new Error(res.message || "Erreur serveur");
+      return res;
+    })
+    .then(res => {
+      showToast(res.message || "Ligne supprimée.", "info");
+      // retire la ligne du DOM
+      row.classList.add("table-danger");
+      setTimeout(() => row.remove(), 400);
+    })
+    .catch(err => showToast(err.message || "Erreur de suppression", "error"));
+  });
+});
+</script>
+{% endblock %}

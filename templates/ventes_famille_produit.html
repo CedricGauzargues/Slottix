@@ -1,0 +1,287 @@
+{% extends "base.html" %}
+{% block title %}🏷️ Ventes exceptionnelles par famille produit – Slottix{% endblock %}
+
+{% block content %}
+<div class="card shadow-lg">
+  <div class="card-header bg-success text-white d-flex justify-content-between align-items-center">
+    <h2 class="h5 mb-0">🏷️ Ventes exceptionnelles par famille produit</h2>
+    <div class="d-flex gap-2">
+      <button id="btnRefresh" class="btn btn-light btn-sm">🔄 Actualiser</button>
+      <button id="btnAdd" class="btn btn-warning btn-sm fw-bold">➕ Nouvelle vente</button>
+    </div>
+  </div>
+
+  <div class="card-body" style="padding:10px;">
+    <div class="table-responsive">
+      <table id="ventesFamilleTable" class="table table-striped table-hover table-sm align-middle text-center"
+             style="min-width: 1000px; font-size: 0.9rem;">
+        <thead class="table-dark">
+          <tr>
+            <th>ID</th>
+            <th>Famille Produit 1</th>
+            <th>Famille Produit 2</th>
+            <th>Famille Produit 3</th>
+            <th>Évolution (%)</th>
+            <th>Date du</th>
+            <th>Date au</th>
+            <th>Type Flux</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- Modal ajout/modif -->
+<div class="modal fade" id="addModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title">➕ Nouvelle vente exceptionnelle par famille produit</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+      <div class="modal-body">
+        <form id="addForm" class="row g-3">
+          <input type="hidden" name="IDEvenementFamilleProduit">
+          <input type="hidden" name="mode" value="add">
+
+          <div class="col-md-4">
+  		<label class="form-label">Famille Produit 1</label>
+  		<select class="form-select" name="FamilleDeProduit1" id="famille1Select"></select>
+	  </div>
+
+	  <div class="col-md-4">
+  		<label class="form-label">Famille Produit 2</label>
+   		<select class="form-select" name="FamilleDeProduit2" id="famille2Select"></select>
+	  </div>
+
+	  <div class="col-md-4">
+  		<label class="form-label">Famille Produit 3</label>
+  		<select class="form-select" name="FamilleDeProduit3" id="famille3Select"></select>
+	  </div>
+
+          <div class="col-md-4">
+            <label class="form-label">Évolution (%)</label>
+            <input type="number" class="form-control" name="Evolution" step="0.01" placeholder="ex : 4.5 pour +4,5 %" required>
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label">Date du</label>
+            <input type="date" class="form-control" name="DateDu" required>
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label">Date au</label>
+            <input type="date" class="form-control" name="DateAu" required>
+          </div>
+
+          <div class="col-md-4">
+            <label class="form-label">Type de flux</label>
+            <select name="TypeFlux" class="form-select" id="fluxSelect">
+              <option value="Tous">Tous</option>
+            </select>
+            <div class="form-text">Si non renseigné, le TypeFlux sera défini à <strong>"Tous"</strong>.</div>
+          </div>
+        </form>
+      </div>
+
+      <div class="modal-footer d-flex justify-content-between">
+        <div class="text-muted small">Remplir les champs puis enregistrer pour valider.</div>
+        <div>
+          <button class="btn btn-secondary" data-bs-dismiss="modal">Annuler</button>
+          <button id="confirmAdd" class="btn btn-success">💾 Enregistrer</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+
+<script>
+$(function () {
+  let table = $('#ventesFamilleTable').DataTable({
+    ajax: { url: "{{ url_for('api_ventes_famille_data') }}", dataSrc: '' },
+    columns: [
+      { data: 'IDEvenementFamilleProduit' },
+      { data: 'FamilleDeProduit1' },
+      { data: 'FamilleDeProduit2' },
+      { data: 'FamilleDeProduit3' },
+      { data: 'Evolution', render: d => d ? d + ' %' : '—' },
+      {
+  data: 'DateDu',
+  render: d => {
+    if (!d) return '—';
+    try {
+      const date = new Date(d);
+      return date.toLocaleDateString('fr-FR');
+    } catch (e) { return d; }
+  }
+},
+{
+  data: 'DateAu',
+  render: d => {
+    if (!d) return '—';
+    try {
+      const date = new Date(d);
+      return date.toLocaleDateString('fr-FR');
+    } catch (e) { return d; }
+  }
+},
+
+      { data: 'TypeFlux', render: d => d || '<span class="text-muted">Tous</span>' },
+      {
+        data: null, orderable: false, searchable: false,
+        render: row => `
+          <div style="white-space: nowrap;">
+            <button class="btn btn-sm btn-outline-primary btn-edit me-1" data-id="${row.IDEvenementFamilleProduit}">✏️ Modifier</button>
+            <button class="btn btn-sm btn-outline-danger btn-del" data-id="${row.IDEvenementFamilleProduit}">🗑️ Supprimer</button>
+          </div>`
+      }
+    ],
+    pageLength: 25,
+    language: { url: "https://cdn.datatables.net/plug-ins/1.13.6/i18n/fr-FR.json" },
+    order: [[0, 'desc']]
+  });
+
+  const reload = () => table.ajax.reload(null, false);
+  $('#btnRefresh').on('click', reload);
+
+  const addModalEl = document.getElementById('addModal');
+  const addModal = new bootstrap.Modal(addModalEl);
+
+  // === 🔽 Nouvelle fonction : charger les familles produits ===
+  async function loadFamilles() {
+    try {
+      const res = await fetch("/api/familles_options");
+      const data = await res.json();
+
+      const f1Sel = $('#famille1Select').empty().append('<option value="">(Aucune)</option>');
+      const f2Sel = $('#famille2Select').empty().append('<option value="">(Aucune)</option>');
+      const f3Sel = $('#famille3Select').empty().append('<option value="">(Aucune)</option>');
+
+      (data.famille1 || []).forEach(v => f1Sel.append(`<option value="${v}">${v}</option>`));
+      (data.famille2 || []).forEach(v => f2Sel.append(`<option value="${v}">${v}</option>`));
+      (data.famille3 || []).forEach(v => f3Sel.append(`<option value="${v}">${v}</option>`));
+    } catch (e) {
+      console.error("❌ Erreur chargement familles produits", e);
+    }
+  }
+
+  // === Bouton Ajouter ===
+  $('#btnAdd').on('click', async function(){
+    $('#addForm')[0].reset();
+    $('#addForm [name="mode"]').val('add');
+    $('#addForm [name="IDEvenementFamilleProduit"]').val('');
+
+    try {
+      const res = await fetch("{{ url_for('api_ventes_famille_options') }}");
+      const j = await res.json();
+
+      const fluxSel = $('#fluxSelect').empty().append('<option value="Tous">Tous</option>');
+      (j.typeflux || []).forEach(f => fluxSel.append(`<option value="${f}">${f}</option>`));
+    } catch(e){
+      alert("❌ Erreur chargement des options."); return;
+    }
+
+    // 🔹 Appel ici pour charger les familles produits
+    await loadFamilles();
+
+    $('#addModal .modal-title').text('➕ Nouvelle vente exceptionnelle par famille produit');
+    addModal.show();
+  });
+
+  // === Validation dates ===
+  function validateDates(du, au) {
+    if (!du || !au) return true;
+    return new Date(au) >= new Date(du);
+  }
+
+  // === Enregistrer (ajout/modif) ===
+  $('#confirmAdd').on('click', async function(){
+    const form = Object.fromEntries(new FormData($('#addForm')[0]));
+    const mode = form.mode;
+
+    if (!form.FamilleDeProduit1){ alert("Veuillez renseigner au moins la famille de produit 1."); return; }
+    if (!form.Evolution){ alert("Veuillez saisir une évolution."); return; }
+    if (!form.DateDu || !form.DateAu){ alert("Les dates sont obligatoires."); return; }
+    if (!validateDates(form.DateDu, form.DateAu)){ alert("La date de fin doit être postérieure à la date de début."); return; }
+
+    form.TypeFlux = form.TypeFlux || "Tous";
+
+    const endpoint = (mode === 'edit')
+        ? "{{ url_for('api_ventes_famille_update') }}"
+        : "{{ url_for('api_ventes_famille_add') }}";
+
+    try {
+      const r = await fetch(endpoint, {
+        method: "POST", headers: {"Content-Type":"application/json"},
+        body: JSON.stringify(form)
+      });
+      const j = await r.json();
+
+      if(r.ok && j.status === "success"){
+        alert(j.message);
+        addModal.hide();
+        reload();
+      } else {
+        alert(j.message || "❌ Erreur d’enregistrement.");
+      }
+    } catch(e){
+      console.error(e);
+      alert("❌ Erreur réseau.");
+    }
+  });
+
+  // === Modifier ===
+  $('#ventesFamilleTable').on('click', '.btn-edit', async function(){
+    const id = $(this).data('id');
+    try {
+      const res = await fetch(`/api/ventes_famille_get/${id}`);
+      const j = await res.json();
+      if(!res.ok || j.status === "error"){ alert(j.message || "Erreur chargement ligne."); return; }
+
+      const d = j.data;
+      $('#addForm')[0].reset();
+      $('#addForm [name="mode"]').val('edit');
+      $('#addForm [name="IDEvenementFamilleProduit"]').val(d.IDEvenementFamilleProduit);
+      $('#addForm [name="FamilleDeProduit1"]').val(d.FamilleDeProduit1);
+      $('#addForm [name="FamilleDeProduit2"]').val(d.FamilleDeProduit2);
+      $('#addForm [name="FamilleDeProduit3"]').val(d.FamilleDeProduit3);
+      $('#addForm [name="Evolution"]').val(d.Evolution);
+      $('#addForm [name="DateDu"]').val(d.DateDu);
+      $('#addForm [name="DateAu"]').val(d.DateAu);
+      $('#addForm [name="TypeFlux"]').val(d.TypeFlux || 'Tous');
+
+      $('#addModal .modal-title').text('✏️ Modifier une vente exceptionnelle par famille produit');
+      addModal.show();
+    } catch(e){
+      console.error(e);
+      alert("❌ Erreur réseau lors du chargement de la ligne.");
+    }
+  });
+
+  // === Supprimer ===
+  $('#ventesFamilleTable').on('click', '.btn-del', async function(){
+    const id = $(this).data('id');
+    if(!confirm(`Supprimer l’événement famille produit #${id} ?`)) return;
+    try {
+      const r = await fetch("{{ url_for('api_ventes_famille_delete') }}", {
+        method: "DELETE", headers: {"Content-Type":"application/json"},
+        body: JSON.stringify({IDEvenementFamilleProduit: id})
+      });
+      const j = await r.json();
+      if(r.ok && j.status === "success"){ alert(j.message); reload(); }
+      else alert(j.message || "❌ Erreur suppression.");
+    } catch(e){ alert("❌ Erreur réseau."); }
+  });
+});
+</script>
+{% endblock %}
+

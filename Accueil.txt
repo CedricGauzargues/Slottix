@@ -1,0 +1,35 @@
+Accueil
+|-Gains réels obtenus
+|-Ecart prévisionnel vs réel
+|-Déplacements à réaliser
+|-Planification des déplacements
+|-Historique des déplacements
+|-Suivi des approvisionnements
+|-Anomalie
+	|-dimensions
+	|-cheminement
+	|-quantité au picking > qté max
+	|-picking hors circuit
+	|-Qté mini erronée
+	|-Qté maxi erronée
+|-Gestion des Nouveaux produits
+	|-Positionnement des nouveaux produits
+	|-Réservation des pickings vides
+|-Scenario
+	|-Modification des scénarios
+|-Ventes exceptionnelles
+	|-Ventes additionnelles par ref
+	|-Ventes additionnelles par fournisseur
+	|-Ventes additionnelles par famille produit
+|-Parametres
+	|-Imports manuels
+	|-Imports automatisés
+	|-Historique des imports
+	|-Groupe de circuit
+	|-Bornage circuit
+	|-IA
+	|-Rapports mail
+	|-Validation des transferts
+
+
+

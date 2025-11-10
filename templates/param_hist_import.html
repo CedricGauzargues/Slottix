@@ -1,0 +1,145 @@
+{% extends "base.html" %}
+
+{% block title %}Historique des imports – Slottix{% endblock %}
+
+{% block content %}
+<div class="card shadow-lg">
+  <div class="card-header bg-primary text-white">
+    <h2 class="h4 mb-0">📜 Historique des imports</h2>
+  </div>
+  <div class="card-body">
+
+    <!-- Messages flash -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        <div class="mb-3">
+          {% for category, message in messages %}
+            <div class="alert alert-{{ 'success' if category == 'success' else 'danger' }} alert-dismissible fade show" role="alert">
+              {{ message }}
+              <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Fermer"></button>
+            </div>
+          {% endfor %}
+        </div>
+      {% endif %}
+    {% endwith %}
+
+    <!-- Tableau -->
+    <div class="table-responsive">
+      <table id="importsTable" class="table table-striped table-hover align-middle">
+        <thead class="table-dark">
+          <tr>
+            <th>📂 Nom Table</th>
+            <th>📅 Date/Heure</th>
+            <th>👤 Utilisateur</th>
+            <th>📊 Résultat</th>
+            <th>📝 Détail Erreur</th>
+            <th>🔢 Nombre Lignes</th>
+            <th>📄 Nom Fichier</th>
+          </tr>
+          <!-- Ligne de filtres -->
+          <tr>
+            <th><input type="text" placeholder="Filtrer..." class="form-control form-control-sm" /></th>
+            <th><input type="text" placeholder="Filtrer..." class="form-control form-control-sm" /></th>
+            <th><input type="text" placeholder="Filtrer..." class="form-control form-control-sm" /></th>
+            <th><input type="text" placeholder="Filtrer..." class="form-control form-control-sm" /></th>
+            <th><input type="text" placeholder="Filtrer..." class="form-control form-control-sm" /></th>
+            <th><input type="text" placeholder="Filtrer..." class="form-control form-control-sm" /></th>
+            <th><input type="text" placeholder="Filtrer..." class="form-control form-control-sm" /></th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in data %}
+          <tr>
+            <td>{{ row.NomTable }}</td>
+            <td>{{ row.DateHeureFr }}</td>
+            <td>{{ row.Utilisateur }}</td>
+            <td>
+              {% if row.Resultat == "Succès" %}
+                <span class="badge bg-success">✅ Succès</span>
+              {% else %}
+                <span class="badge bg-danger">❌ Erreur</span>
+              {% endif %}
+            </td>
+            <td>{{ row.DetailErreur }}</td>
+            <td>{{ row.NombreLignes or "-" }}</td>
+            <td>{{ row.NomFichier }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- DataTables JS + CSS -->
+<link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+
+<!-- DataTables Buttons -->
+<link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.2/css/buttons.bootstrap5.min.css">
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/dataTables.buttons.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.bootstrap5.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/pdfmake.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdfmake/0.2.7/vfs_fonts.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.html5.min.js"></script>
+<script src="https://cdn.datatables.net/buttons/2.4.2/js/buttons.print.min.js"></script>
+
+<script src="https://cdn.datatables.net/plug-ins/1.13.6/sorting/date-eu.js"></script>
+<script>
+  $(document).ready(function() {
+    // Initialisation DataTable
+    let table = $('#importsTable').DataTable({
+      pageLength: 25,
+      lengthMenu: [10, 25, 50, 100],
+      order: [[1, "desc"]], // 🔹 Colonne date (index 1) triée DESC
+      columnDefs: [
+        { targets: 1, type: 'date-eu' } // 🔹 Format européen JJ/MM/AAAA HH:mm:ss
+      ],
+      scrollY: "400px",
+      scrollCollapse: true,
+      paging: true,
+      autoWidth: false,
+      dom: 'Bfrtip', // 🔥 ajoute la barre de boutons
+      buttons: [
+        {
+          extend: 'excelHtml5',
+          text: '📊 Export Excel (filtré)',
+          exportOptions: {
+            columns: ':visible',
+            modifier: { search: 'applied', order: 'applied' }
+          }
+        },
+        {
+          extend: 'csvHtml5',
+          text: '📄 Export CSV (filtré)',
+          exportOptions: {
+            columns: ':visible',
+            modifier: { search: 'applied', order: 'applied' }
+          }
+        }
+      ],
+      language: { url: "https://cdn.datatables.net/plug-ins/1.13.6/i18n/fr-FR.json" }
+    });
+
+    // Ajout filtres par colonne
+    $('#importsTable thead tr:eq(1) th').each(function(i) {
+      $('input', this).on('keyup change', function() {
+        if (table.column(i).search() !== this.value) {
+          table.column(i).search(this.value).draw();
+        }
+      });
+    });
+
+    // Ajustement largeur après toggle sidebar
+    $('#toggle-btn').on('click', function() {
+      setTimeout(function() {
+        table.columns.adjust().draw();
+      }, 320);
+    });
+  });
+</script>
+
+{% endblock %}

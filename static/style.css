@@ -1,0 +1,81 @@
+/* --- Reset & base --- */
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+  font-family: Arial, sans-serif;
+  overflow-x: hidden; /* évite tout décalage horizontal */
+}
+
+/* --- Layout principal en GRID : 2 colonnes --- */
+#layout {
+  display: grid;
+  grid-template-columns: 280px 1fr;   /* sidebar fixe | contenu fluide */
+  min-height: 100vh;
+  transition: grid-template-columns 0.3s ease;
+}
+
+/* Quand on masque la sidebar, on met sa colonne à 0 */
+#layout.collapsed {
+  grid-template-columns: 0 1fr;
+}
+
+/* --- Sidebar --- */
+#sidebar {
+  background: #343a40;
+  color: #fff;
+  height: 100vh;
+  overflow-y: auto;
+  /* Protéger contre toute réduction involontaire */
+  min-width: 280px;
+  width: 280px;
+  box-sizing: border-box;
+  /* pas de position: fixed; le grid s’en occupe */
+}
+
+#sidebar .nav-link {
+  color: white;
+  cursor: pointer;
+  display: block;
+  padding: 8px 16px;
+  white-space: nowrap;
+}
+#sidebar .nav-link:hover {
+  background: #495057;
+}
+.submenu { list-style: none; padding-left: 20px; }
+.submenu .submenu { padding-left: 20px; }
+
+/* --- Contenu --- */
+#content {
+  padding: 20px;
+  box-sizing: border-box;
+  min-width: 0; /* IMPORTANT : permet aux tableaux de s’adapter sans pousser la grille */
+}
+
+/* --- Bouton toggle --- */
+#toggleSidebarBtn {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  z-index: 1100;
+  background: #343a40;
+  color: white;
+  border: none;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* --- DataTables: garantir que le tableau ne casse pas la largeur --- */
+.dataTables_wrapper { width: 100% !important; }
+.dataTables_wrapper .dataTables_scrollHead table,
+.dataTables_wrapper .dataTables_scrollBody table,
+table.dataTable {
+  width: 100% !important;
+  table-layout: auto;
+}
+table.dataTable th, table.dataTable td {
+  word-wrap: break-word;
+  white-space: normal;
+}

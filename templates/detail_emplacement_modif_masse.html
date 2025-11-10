@@ -1,0 +1,503 @@
+{% extends "base.html" %}
+{% block title %}Modification en masse – Slottix{% endblock %}
+{% block content %}
+<div class="card shadow">
+  <div class="card-header bg-light d-flex justify-content-between align-items-center">
+    <h2 class="h5 mb-0">🧰 Modification en masse des emplacements</h2>
+    <a href="{{ url_for('detail_emplacement.page_detail_emplacement') }}" class="btn btn-secondary btn-sm">⬅ Retour</a>
+  </div>
+
+  <div class="card-body">
+    <form id="massForm" class="row g-2 align-items-end flex-wrap">
+
+      <!-- Zone et Allée -->
+      <div class="col-auto">
+        <label class="form-label">Zone</label>
+        <input type="text" class="form-control no-spin" id="zone" style="width:80px;">
+      </div>
+
+      <div class="col-auto">
+        <label class="form-label">Allée</label>
+        <input type="number" class="form-control no-spin" id="allee" style="width:80px;">
+      </div>
+
+      <!-- Du déplacement -->
+      <div class="col-auto">
+        <label class="form-label">Du déplacement</label>
+        <input type="number" class="form-control no-spin" id="depFrom" style="width:120px;">
+      </div>
+
+      <!-- Du niveau -->
+      <div class="col-auto">
+        <label class="form-label">Du niveau</label>
+        <input type="number" class="form-control no-spin" id="nivFrom" style="width:120px;">
+      </div>
+
+      <!-- Autres champs sur la même ligne -->
+      <div class="col-auto">
+        <label class="form-label">X réf.</label>
+        <input type="number" step="any" class="form-control no-spin" id="xRef" style="width:100px;">
+      </div>
+      <div class="col-auto">
+        <label class="form-label">Y réf.</label>
+        <input type="number" step="any" class="form-control no-spin" id="yRef" style="width:100px;">
+      </div>
+      <div class="col-auto">
+        <label class="form-label">Z réf.</label>
+        <input type="number" step="any" class="form-control no-spin" id="zRef" style="width:100px;">
+      </div>
+
+      <div class="col-auto">
+        <label class="form-label">Pair/Impair</label>
+        <select class="form-select" id="pairImpair" style="width:110px;">
+          <option value="tous">Tous</option>
+          <option value="pair">Pair</option>
+          <option value="impair">Impair</option>
+        </select>
+      </div>
+
+      <div class="col-auto">
+        <label class="form-label">Espacement (m)</label>
+        <input type="number" step="any" class="form-control no-spin" id="espacement" style="width:130px;">
+      </div>
+
+      <div class="col-auto">
+        <label class="form-label">Hauteur des lisses (m)</label>
+        <input type="number" step="any" class="form-control no-spin" id="hauteurLisse" style="width:150px;">
+      </div>
+
+      <div class="col-auto">
+        <label class="form-label">Orientation</label>
+        <select class="form-select" id="orientation" style="width:90px;">
+          <option value="X">X</option>
+          <option value="Y">Y</option>
+        </select>
+      </div>
+
+      <!-- Boutons en haut -->
+      <div class="col-auto align-self-end">
+        <button type="button" id="calculer" class="btn btn-primary">Calculer</button>
+      </div>
+      <div class="col-auto align-self-end">
+        <button type="button" id="valider" class="btn btn-success" style="display:none;">✅ Valider les coordonnées</button>
+      </div>
+
+      <!-- Ligne 2 : Au déplacement / Au niveau -->
+      <div class="w-100"></div>
+
+      <div class="col-auto" style="margin-left: 170px;">
+        <label class="form-label">Au déplacement</label>
+        <input type="number" class="form-control no-spin" id="depTo" style="width:120px;">
+      </div>
+
+      <div class="col-auto" style="margin-left: 20px;">
+        <label class="form-label">Au niveau</label>
+        <input type="number" class="form-control no-spin" id="nivTo" style="width:120px;">
+      </div>
+
+      <!-- ====== NOUVEAU : Type1/Type2/Type3 + Palette ====== -->
+      <div class="w-100"></div>
+
+      <div class="col-auto">
+        <label class="form-label">Type 1</label>
+        <select id="type1Sel" class="form-select" style="width:160px;">
+          <option value="">-- Ne pas modifier --</option>
+        </select>
+      </div>
+
+      <div class="col-auto">
+        <label class="form-label">Type 2</label>
+        <select id="type2Sel" class="form-select" style="width:160px;" disabled>
+          <option value="">-- Ne pas modifier --</option>
+        </select>
+      </div>
+
+      <div class="col-auto">
+        <label class="form-label">Type 3</label>
+        <select id="type3Sel" class="form-select" style="width:160px;" disabled>
+          <option value="">-- Ne pas modifier --</option>
+        </select>
+      </div>
+
+      <div class="col-auto d-flex align-items-center" style="gap:10px; padding-top: 28px;">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="paletteVal">
+          <label class="form-check-label" for="paletteVal">Palette</label>
+        </div>
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="paletteApply">
+          <label class="form-check-label" for="paletteApply">Appliquer Palette ?</label>
+        </div>
+      </div>
+
+<div class="col-auto">
+  <label class="form-label">Poids Limite Unitaire</label>
+  <input type="number" step="any" class="form-control no-spin" id="poidsLimiteUnitaire" style="width:160px;">
+</div>
+
+
+      <!-- ====== /NOUVEAU ====== -->
+
+    </form>
+
+    <hr>
+
+    <div id="resultSection" style="display:none;">
+      <h5>Résultats du calcul :</h5>
+      <div id="resultTable"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Overlay de chargement -->
+<div id="busyOverlay" style="display:none;position:fixed;inset:0;background:rgba(255,255,255,0.7);z-index:2000;backdrop-filter: blur(1px);">
+  <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;">
+    <div class="spinner-border" role="status" aria-hidden="true"></div>
+    <div class="mt-2 fw-semibold">Mise à jour en cours…</div>
+  </div>
+</div>
+
+<!-- CSS : suppression des flèches ↑↓ sur les champs number -->
+<style>
+  input[type=number].no-spin::-webkit-outer-spin-button,
+  input[type=number].no-spin::-webkit-inner-spin-button {
+      -webkit-appearance: none;
+      margin: 0;
+  }
+  input[type=number].no-spin {
+      -moz-appearance: textfield;
+  }
+
+  /* Champ obligatoire (par défaut) */
+  .required-field {
+    border: 2px solid #ff6666 !important;
+    background-color: #fff6f6 !important;
+  }
+
+  /* Champ obligatoire lié (par ex. si X/Y/Z saisis) */
+  .linked-required {
+    border: 2px solid #ffa500 !important;
+    background-color: #fffaf0 !important;
+  }
+
+  input, select {
+    transition: border-color 0.3s, background-color 0.3s;
+  }
+
+</style>
+
+
+<script>
+
+// ✅ Empêche la soumission automatique du formulaire
+document.getElementById('massForm').addEventListener('submit', function(e){ e.preventDefault(); });
+
+// 🔸 Marque les champs obligatoires de base
+const baseRequiredIds = ['zone', 'allee', 'depFrom', 'depTo', 'nivFrom', 'nivTo', 'pairImpair'];
+baseRequiredIds.forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.classList.add('required-field');
+});
+
+
+// ===== Types : chargement + dépendances =====
+let TYPE_HIER = {}; // { Type1: { Type2: [Type3, ...], ... }, ... }
+
+async function loadTypes(){
+  try{
+    const r = await fetch("/api/detail_emplacement/lists");
+    const j = await r.json();
+    TYPE_HIER = j.types || {};
+    const t1 = Object.keys(TYPE_HIER).sort();
+    const t1Sel = document.getElementById('type1Sel');
+    t1Sel.innerHTML = '<option value="">-- Ne pas modifier --</option>' + t1.map(v=>`<option value="${v}">${v}</option>`).join('');
+  }catch(e){
+    console.error("Chargement types échoué:", e);
+  }
+}
+loadTypes();
+
+document.getElementById('type1Sel').addEventListener('change', function(){
+  const t1 = this.value || "";
+  const t2Sel = document.getElementById('type2Sel');
+  const t3Sel = document.getElementById('type3Sel');
+  if(!t1){
+    t2Sel.innerHTML = '<option value="">-- Ne pas modifier --</option>';
+    t3Sel.innerHTML = '<option value="">-- Ne pas modifier --</option>';
+    t2Sel.disabled = true; t3Sel.disabled = true;
+    return;
+  }
+  const t2List = Object.keys(TYPE_HIER[t1] || {}).sort();
+  t2Sel.innerHTML = '<option value="">-- (laisser vide) --</option>' + t2List.map(v=>`<option value="${v}">${v}</option>`).join('');
+  t2Sel.disabled = false;
+  t3Sel.innerHTML = '<option value="">-- (laisser vide) --</option>'; // reset
+  t3Sel.disabled = false;
+});
+
+document.getElementById('type2Sel').addEventListener('change', function(){
+  const t1 = document.getElementById('type1Sel').value || "";
+  const t2 = this.value || "";
+  const t3Sel = document.getElementById('type3Sel');
+  if(!t1 || !t2){
+    t3Sel.innerHTML = '<option value="">-- (laisser vide) --</option>';
+    t3Sel.disabled = false;
+    return;
+  }
+  const t3List = (TYPE_HIER[t1]?.[t2] || []).slice().sort();
+  t3Sel.innerHTML = '<option value="">-- (laisser vide) --</option>' + t3List.map(v=>`<option value="${v}">${v}</option>`).join('');
+  t3Sel.disabled = false;
+});
+
+// 🔸 Met à jour dynamiquement les champs obligatoires liés à X/Y/Z
+const xyzIds = ['xRef', 'yRef', 'zRef'];
+const linkedIds = ['xRef', 'yRef', 'zRef', 'espacement', 'hauteurLisse', 'orientation'];
+
+function updateLinkedFieldHighlight() {
+  const hasXYZ = xyzIds.some(id => {
+    const val = document.getElementById(id).value.trim();
+    return val !== "";
+  });
+
+  linkedIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    if (hasXYZ) el.classList.add('linked-required');
+    else el.classList.remove('linked-required');
+  });
+}
+
+// Attache les événements
+xyzIds.forEach(id => {
+  const el = document.getElementById(id);
+  el.addEventListener('input', updateLinkedFieldHighlight);
+});
+
+// ===== /Types =====
+
+document.getElementById('calculer').addEventListener('click', async function() {
+  const zone = document.getElementById('zone').value.trim();
+  const allee = document.getElementById('allee').value.trim();
+  const depFrom = document.getElementById('depFrom').value.trim();
+  const depTo = document.getElementById('depTo').value.trim();
+  const nivFrom = document.getElementById('nivFrom').value.trim();
+  const nivTo = document.getElementById('nivTo').value.trim();
+  const pairImpair = document.getElementById('pairImpair').value;
+
+  // Champs optionnels
+  const xRef = document.getElementById('xRef').value.trim();
+  const yRef = document.getElementById('yRef').value.trim();
+  const zRef = document.getElementById('zRef').value.trim();
+  const esp = document.getElementById('espacement').value.trim();
+  const hLisse = document.getElementById('hauteurLisse').value.trim();
+  const orientation = document.getElementById('orientation').value;
+
+  // Vérifie les champs de base (toujours obligatoires)
+  if (!zone || !allee || !depFrom || !depTo || !nivFrom || !nivTo || !pairImpair) {
+    alert("⚠️ Merci de renseigner : Zone, Allée, Du/au déplacement, Du/au niveau et Pair/Impair.");
+    return;
+  }
+
+  // Vérifie si l'utilisateur a saisi au moins un X/Y/Z
+  const hasXYZ = xRef !== "" || yRef !== "" || zRef !== "";
+
+  // Si oui, alors tous les champs liés aux coordonnées deviennent obligatoires
+  if (hasXYZ) {
+    if (!xRef || !yRef || !zRef || !esp || !hLisse || !orientation) {
+      alert("⚠️ Si vous saisissez X, Y ou Z, vous devez aussi renseigner X réf, Y réf, Z réf, Espacement (m), Hauteur des lisses (m) et Orientation.");
+      return;
+    }
+  }
+
+  // On peut convertir en nombres ensuite, une fois la validation passée
+  const alleeNum = parseInt(allee);
+  const depFromNum = parseInt(depFrom);
+  const depToNum = parseInt(depTo);
+  const nivFromNum = parseInt(nivFrom);
+  const nivToNum = parseInt(nivTo);
+
+  // 🔍 Appel API pour récupérer les dimensions
+  const response = await fetch("/api/detail_emplacement/dimensions", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      zone: zone,
+      allee: alleeNum,
+      dep_from: depFromNum,
+      dep_to: depToNum,
+      niv_from: nivFromNum,
+      niv_to: nivToNum
+    })
+  });
+
+  const data = await response.json();
+  const emplacements = (data.dimensions || [])
+    .sort((a, b) => a.Deplacement - b.Deplacement || a.Niveau - b.Niveau);
+
+  if (emplacements.length === 0) {
+    document.getElementById('resultTable').innerHTML =
+      "<p class='text-danger text-center mt-3'>⚠️ Aucun emplacement trouvé pour cette sélection.</p>";
+    document.getElementById('resultSection').style.display = 'block';
+    document.getElementById('valider').style.display = 'none';
+    return;
+  }
+
+  // --- Génération du tableau
+  let html = `<table class="table table-sm table-bordered text-center">
+                <thead class="table-light">
+                  <tr>
+                    <th>Zone</th><th>Allée</th><th>Déplacement</th><th>Niveau</th>
+                    <th>X</th><th>Y</th><th>Z</th>
+                    <th>Profondeur</th><th>Largeur</th><th>Hauteur</th>
+                  </tr>
+                </thead><tbody>`;
+
+  // Variables de calcul
+  let x = parseFloat(xRef) || 0,
+      y = parseFloat(yRef) || 0,
+      z = parseFloat(zRef) || 0;
+  let lastDep = null;
+
+  for (const emp of emplacements) {
+    const d = emp.Deplacement;
+    const n = emp.Niveau;
+    const profondeur = parseFloat(emp.profondeur) || 0.8;
+    const largeur = parseFloat(emp.largeur) || 0.8;
+    const hauteur = parseFloat(emp.hauteur) || 0.8;
+
+    // pair / impair
+    if (pairImpair === 'pair' && d % 2 !== 0) continue;
+    if (pairImpair === 'impair' && d % 2 === 0) continue;
+
+    // Calcul seulement si XYZ renseignés
+    if (hasXYZ) {
+      if (lastDep !== null && d !== lastDep) {
+        z = parseFloat(zRef);
+        if (orientation === "X") x += parseFloat(esp) + largeur;
+        else y += parseFloat(esp) + largeur;
+      }
+
+      if (n === nivFromNum) {
+        z = parseFloat(zRef);
+      } else {
+        z += hauteur + parseFloat(hLisse);
+      }
+    }
+
+    html += `<tr>
+      <td>${zone}</td>
+      <td>${allee}</td>
+      <td>${d}</td>
+      <td>${n}</td>
+      <td>${hasXYZ ? x.toFixed(3) : ""}</td>
+      <td>${hasXYZ ? y.toFixed(3) : ""}</td>
+      <td>${hasXYZ ? z.toFixed(3) : ""}</td>
+      <td>${profondeur.toFixed(3)}</td>
+      <td>${largeur.toFixed(3)}</td>
+      <td>${hauteur.toFixed(3)}</td>
+    </tr>`;
+
+    lastDep = d;
+  }
+
+  html += "</tbody></table>";
+  document.getElementById('resultTable').innerHTML = html;
+  document.getElementById('resultSection').style.display = 'block';
+  document.getElementById('valider').style.display = 'inline-block';
+});
+
+
+
+// ✅ Enregistrement des coordonnées calculées (avec overlay)
+document.getElementById('valider').addEventListener('click', async function(e) {
+  e.preventDefault();
+  e.stopPropagation();
+
+  if (!confirm("⚠️ Confirmez-vous l'enregistrement des coordonnées dans la base ?")) {
+    alert("❌ Enregistrement annulé.");
+    return;
+  }
+
+  const rows = Array.from(document.querySelectorAll('#resultTable table tbody tr'));
+  if (rows.length === 0) {
+    alert("⚠️ Aucun résultat à enregistrer.");
+    return;
+  }
+
+  const coords = rows.map(row => {
+    const cells = row.querySelectorAll('td');
+    return {
+      Zone: cells[0].innerText.trim(),
+      Allee: parseInt(cells[1].innerText.trim()),
+      Deplacement: parseInt(cells[2].innerText.trim()),
+      Niveau: parseInt(cells[3].innerText.trim()),
+      X: parseFloat(cells[4].innerText.trim()),
+      Y: parseFloat(cells[5].innerText.trim()),
+      Z: parseFloat(cells[6].innerText.trim())
+    };
+  });
+
+  // Préparation des champs optionnels pour MAJ de masse
+  const type1 = (document.getElementById('type1Sel').value || "").trim();
+  const type2 = (document.getElementById('type2Sel').value || "").trim();
+  const type3 = (document.getElementById('type3Sel').value || "").trim();
+  const poidsLimiteUnitaire = document.getElementById('poidsLimiteUnitaire').value.trim();
+  // Règle : si Type1 vide -> on n'envoie rien (on ne modifie pas les types)
+  const sendTypes = type1 !== "";
+  const payload = { coords };
+  if (sendTypes) {
+    payload.type1 = type1;
+    payload.type2 = type2 || "";
+    payload.type3 = type3 || "";
+  }
+  if (poidsLimiteUnitaire !== "") {
+  payload.poids_limite_unitaire = parseFloat(poidsLimiteUnitaire);
+}
+
+
+  // Palette : on ne l'envoie que si "Appliquer Palette ?" est coché
+  const applyPal = document.getElementById('paletteApply').checked;
+  if (applyPal) {
+    payload.palette = document.getElementById('paletteVal').checked; // true/false
+  }
+
+  const overlay = document.getElementById('busyOverlay');
+  try {
+    overlay.style.display = 'block';
+
+    const response = await fetch("/api/detail_emplacement/update_coords", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload)
+    });
+
+    const text = await response.text();
+    let result;
+    try { result = JSON.parse(text); } 
+    catch { result = { status: "unknown", message: text }; }
+
+    if (response.ok && (result.status === "success" || (typeof result === "string" && result.includes("success")))) {
+  alert(result.message || "✅ Coordonnées enregistrées avec succès !");
+  // 🔁 Retour automatique à la page principale après 0.5s
+  setTimeout(() => {
+    window.location.href = "{{ url_for('detail_emplacement.page_detail_emplacement') }}";
+  }, 500);
+} else if (result.status === "error") {
+  alert("❌ Erreur : " + (result.message || "Erreur inconnue"));
+} else {
+  alert("✅ Coordonnées mises à jour (réponse non standard du serveur).");
+  setTimeout(() => {
+    window.location.href = "{{ url_for('detail_emplacement.page_detail_emplacement') }}";
+  }, 500);
+}
+
+
+
+  } catch (err) {
+    console.error("Erreur de mise à jour :", err);
+    alert("❌ Erreur réseau ou serveur : " + err.message);
+  } finally {
+    overlay.style.display = 'none';
+  }
+});
+</script>
+{% endblock %}

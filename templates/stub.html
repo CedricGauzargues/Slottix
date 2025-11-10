@@ -1,0 +1,13 @@
+{# templates/stub.html #}
+{% extends "base.html" %}
+{% block title %}{{ title or "En construction" }}{% endblock %}
+{% block content %}
+  <div class="card shadow-lg">
+    <div class="card-header bg-secondary text-white">
+      <h2 class="h5 mb-0">{{ title or "En construction" }}</h2>
+    </div>
+    <div class="card-body">
+      <p>Cette page est en cours de construction.</p>
+    </div>
+  </div>
+{% endblock %}

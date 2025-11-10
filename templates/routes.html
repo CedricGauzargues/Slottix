@@ -1,0 +1,560 @@
+{% extends "base.html" %}
+{% block title %}🛣️ Gestion des routes{% endblock %}
+{% block content %}
+
+<div class="card shadow">
+  <div class="card-header bg-light d-flex justify-content-between align-items-center">
+    <h2 class="h5 mb-0">🧭 Liste des routes</h2>
+    <button class="btn btn-success btn-sm" onclick="prepareAddRoute()" data-bs-toggle="modal" data-bs-target="#addRouteModal">
+        + Ajouter une route
+    </button>
+  </div>
+
+  <div class="card-body">
+    <div id="routesTable" class="table-responsive"></div>
+  </div>
+</div>
+
+<!-- 🟢 MODAL AJOUT ROUTE -->
+<div class="modal fade" id="addRouteModal" tabindex="-1" aria-labelledby="addRouteModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="routeModalTitle">➕ Nouvelle route</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Fermer"></button>
+      </div>
+      <div class="modal-body">
+        <form id="routeForm" class="row g-3 align-items-end">
+
+          <!-- Ligne 1 : Nom -->
+          <div class="col-12">
+            <label class="form-label fw-bold">Nom de la route</label>
+            <input type="text" class="form-control" id="NomRoute" placeholder="Ex: Allée 28 Droite" required>
+          </div>
+
+          <!-- Ligne 2 : Début -->
+          <div class="col-12 mt-2"><h6 class="text-primary mb-0">🟢 Début de la route</h6></div>
+          <div class="col-md-3">
+            <label class="form-label">Zone (début)</label>
+            <select id="ZoneDeb" class="form-select" disabled></select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Allée (début)</label>
+            <select id="AlleeDeb" class="form-select" disabled></select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Déplacement (début)</label>
+            <select id="DeplacementDeb" class="form-select" disabled></select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Niveau (début)</label>
+            <select id="NiveauDeb" class="form-select" disabled></select>
+          </div>
+
+          <div class="col-12 mt-3"><h6 class="text-secondary mb-0">📍 Coordonnées de début</h6></div>
+          <div class="col-md-2"><label>X début</label><input type="number" step="any" id="XDeb" class="form-control"></div>
+          <div class="col-md-2"><label>Y début</label><input type="number" step="any" id="YDeb" class="form-control"></div>
+          <div class="col-md-2"><label>Z début</label><input type="number" step="any" id="ZDeb" class="form-control"></div>
+
+          <!-- Ligne 3 : Fin -->
+          <div class="col-12 mt-2"><h6 class="text-danger mb-0">🔴 Fin de la route</h6></div>
+          <div class="col-md-3">
+            <label class="form-label">Zone (fin)</label>
+            <select id="ZoneFin" class="form-select" disabled></select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Allée (fin)</label>
+            <select id="AlleeFin" class="form-select" disabled></select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Déplacement (fin)</label>
+            <select id="DeplacementFin" class="form-select" disabled></select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Niveau (fin)</label>
+            <select id="NiveauFin" class="form-select" disabled></select>
+          </div>
+
+          <div class="col-12 mt-2"><h6 class="text-secondary mb-0">📍 Coordonnées de fin</h6></div>
+          <div class="col-md-2"><label>X fin</label><input type="number" step="any" id="XFin" class="form-control"></div>
+          <div class="col-md-2"><label>Y fin</label><input type="number" step="any" id="YFin" class="form-control"></div>
+          <div class="col-md-2"><label>Z fin</label><input type="number" step="any" id="ZFin" class="form-control"></div>
+
+          
+          <!-- Ligne 4 : Largeur + Engin + Sens unique -->
+          <div class="col-md-3">
+            <label class="form-label">Largeur de l’allée (m)</label>
+            <input type="number" step="any" min="0" class="form-control" id="LargeurAllee" placeholder="ex: 3.0" required>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">Type d'engin</label>
+            <select id="TypeEngin" class="form-select" disabled></select>
+          </div>
+          <div class="col-md-3 d-flex align-items-center" style="gap:12px; padding-top: 30px;">
+            <div class="form-check">
+              <input class="form-check-input" type="checkbox" id="SensUnique" disabled>
+              <label class="form-check-label" for="SensUnique">Sens unique</label>
+            </div>
+          </div>
+          <div class="col-md-3" id="directionContainer" style="display:none;">
+            <label class="form-label">Direction du sens unique</label>
+            <select id="SensDirection" class="form-select">
+              <option value="croissant">Déplacement croissant</option>
+              <option value="decroissant">Déplacement décroissant</option>
+            </select>
+          </div>
+
+          <div class="col-md-3 d-flex align-items-center" style="padding-top: 30px;">
+            <button type="submit" class="btn btn-success w-100" disabled>+ Ajouter</button>
+          </div>
+
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+let DATA = { zones: [], emplacements: [], engins: [] };
+
+function pad(n, len){ return String(n).padStart(len,'0'); }
+function uniq(arr){ return Array.from(new Set(arr)); }
+function options(list, firstLabel="-- Choisir --"){
+  return `<option value="">${firstLabel}</option>` + list.map(v => `<option value="${v}">${v}</option>`).join('');
+}
+
+function empsByZone(zone){ return DATA.emplacements.filter(e => e.Zone === zone); }
+function alleesByZone(zone){ return uniq(empsByZone(zone).map(e => e.Allee)).sort((a,b)=>a-b); }
+function depsByZoneAllee(zone, allee){ return uniq(empsByZone(zone).filter(e => e.Allee === Number(allee)).map(e => e.Deplacement)).sort((a,b)=>a-b); }
+function nivsByZoneAlleeDep(zone, allee, dep){ return uniq(empsByZone(zone).filter(e => e.Allee === Number(allee) && e.Deplacement === Number(dep)).map(e => e.Niveau)).sort((a,b)=>a-b); }
+
+async function initForm(){
+  const res = await fetch("/api/routes/lists");
+  if(!res.ok){ alert("Erreur chargement des listes"); return; }
+  DATA = await res.json();
+
+  ["ZoneDeb","ZoneFin"].forEach(id=>{
+    const el=document.getElementById(id);
+    el.innerHTML = options(DATA.zones);
+    el.disabled = false;
+  });
+
+  const engSel = document.getElementById("TypeEngin");
+  engSel.innerHTML = options(DATA.engins.map(e => `${e.TypeEngin}`), "-- Choisir --");
+
+  // ✅ (nouveau) on rattache les événements après remplissage
+  ["ZoneDeb","AlleeDeb","DeplacementDeb","NiveauDeb"].forEach(id=>{
+    document.getElementById(id).addEventListener("change", ()=>fillCoords("Deb"));
+  });
+  ["ZoneFin","AlleeFin","DeplacementFin","NiveauFin"].forEach(id=>{
+    document.getElementById(id).addEventListener("change", ()=>fillCoords("Fin"));
+  });
+}
+
+function enable(id, enable, list=[]){
+  const el = document.getElementById(id);
+  if(list.length){ el.innerHTML = options(list); }
+  el.disabled = !enable;
+  if(!enable) el.value = "";
+}
+
+function afterDebReady(){
+  const ready =
+    document.getElementById("NomRoute").value.trim() !== "" &&
+    document.getElementById("ZoneDeb").value &&
+    document.getElementById("AlleeDeb").value &&
+    document.getElementById("DeplacementDeb").value &&
+    document.getElementById("NiveauDeb").value &&
+    document.getElementById("ZoneFin").value &&
+    document.getElementById("AlleeFin").value &&
+    document.getElementById("DeplacementFin").value &&
+    document.getElementById("NiveauFin").value &&
+    document.getElementById("LargeurAllee").value.trim() !== "";
+
+  document.getElementById("TypeEngin").disabled = !ready;
+  document.getElementById("SensUnique").disabled = !ready;
+  document.querySelector("#routeForm button[type='submit']").disabled = !ready;
+}
+
+async function fillCoords(prefix) {
+  // prefix = "Deb" ou "Fin" à la fin des IDs
+  const zone = document.getElementById(`Zone${prefix}`).value;
+  const allee = document.getElementById(`Allee${prefix}`).value;
+  const dep = document.getElementById(`Deplacement${prefix}`).value;
+  const niv = document.getElementById(`Niveau${prefix}`).value;
+
+  if (!zone || !allee || !dep || !niv) return;
+
+  const emp = DATA.emplacements.find(e =>
+    e.Zone === zone &&
+    e.Allee === Number(allee) &&
+    e.Deplacement === Number(dep) &&
+    e.Niveau === Number(niv)
+  );
+
+  if (emp) {
+    document.getElementById(`X${prefix}`).value = emp.X ?? 0;
+    document.getElementById(`Y${prefix}`).value = emp.Y ?? 0;
+    document.getElementById(`Z${prefix}`).value = emp.Z ?? 0;
+  }
+}
+
+// === Ajout des événements pour remplir les coordonnées ===
+document.getElementById("NiveauDeb").addEventListener("change", () => {
+  fillCoords("Deb");
+});
+document.getElementById("NiveauFin").addEventListener("change", () => {
+  fillCoords("Fin");
+});
+
+// === Début : cascade ===
+["ZoneDeb", "AlleeDeb", "DeplacementDeb", "NiveauDeb"].forEach(id => {
+  document.getElementById(id).addEventListener("change", e => {
+    const z = document.getElementById("ZoneDeb").value;
+    const a = document.getElementById("AlleeDeb").value;
+    const d = document.getElementById("DeplacementDeb").value;
+
+    if (id === "ZoneDeb") {
+      enable("AlleeDeb", !!z, z ? alleesByZone(z) : []);
+      enable("DeplacementDeb", false);
+      enable("NiveauDeb", false);
+    } else if (id === "AlleeDeb") {
+      enable("DeplacementDeb", !!a, a ? depsByZoneAllee(z, a) : []);
+      enable("NiveauDeb", false);
+    } else if (id === "DeplacementDeb") {
+      enable("NiveauDeb", !!d, d ? nivsByZoneAlleeDep(z, a, d) : []);
+    }
+
+    fillCoords("Deb"); // 💡 mise à jour des coordonnées
+    afterDebReady();
+  });
+});
+
+["ZoneFin", "AlleeFin", "DeplacementFin", "NiveauFin"].forEach(id => {
+  document.getElementById(id).addEventListener("change", e => {
+    const z = document.getElementById("ZoneFin").value;
+    const a = document.getElementById("AlleeFin").value;
+    const d = document.getElementById("DeplacementFin").value;
+
+    if (id === "ZoneFin") {
+      enable("AlleeFin", !!z, z ? alleesByZone(z) : []);
+      enable("DeplacementFin", false);
+      enable("NiveauFin", false);
+    } else if (id === "AlleeFin") {
+      enable("DeplacementFin", !!a, a ? depsByZoneAllee(z, a) : []);
+      enable("NiveauFin", false);
+    } else if (id === "DeplacementFin") {
+      enable("NiveauFin", !!d, d ? nivsByZoneAlleeDep(z, a, d) : []);
+    }
+
+    fillCoords("Fin"); // 💡 mise à jour des coordonnées
+    afterDebReady();
+  });
+});
+
+["NomRoute","LargeurAllee","NiveauFin"].forEach(id=>{
+  document.getElementById(id).addEventListener("input", afterDebReady);
+  document.getElementById(id).addEventListener("change", afterDebReady);
+});
+
+// Envoi (ajout ou modification)
+document.getElementById("routeForm").addEventListener("submit", async e => {
+  e.preventDefault();
+
+  const form = document.getElementById("routeForm");
+  const mode = form.dataset.mode || "add"; // 🧭 add ou edit
+  const routeId = form.dataset.editId || null;
+
+  const route = {
+  NomRoute: document.getElementById("NomRoute").value.trim(),
+  EmpDeb: [
+    document.getElementById("ZoneDeb").value,
+    pad(document.getElementById("AlleeDeb").value, 3),
+    pad(document.getElementById("DeplacementDeb").value, 4),
+    pad(document.getElementById("NiveauDeb").value, 2)
+  ].join("-"),
+  EmpFin: [
+    document.getElementById("ZoneFin").value,
+    pad(document.getElementById("AlleeFin").value, 3),
+    pad(document.getElementById("DeplacementFin").value, 4),
+    pad(document.getElementById("NiveauFin").value, 2)
+  ].join("-"),
+  LargeurAllee: parseFloat(document.getElementById("LargeurAllee").value),
+  TypeEngin: document.getElementById("TypeEngin").value,
+  SensUnique: document.getElementById("SensUnique").checked,
+  SensDirection: document.getElementById("SensDirection").value,
+  // 🟢 AJOUT : coordonnées personnalisables
+  XDeb: parseFloat(document.getElementById("XDeb").value) || 0,
+  YDeb: parseFloat(document.getElementById("YDeb").value) || 0,
+  ZDeb: parseFloat(document.getElementById("ZDeb").value) || 0,
+  XFin: parseFloat(document.getElementById("XFin").value) || 0,
+  YFin: parseFloat(document.getElementById("YFin").value) || 0,
+  ZFin: parseFloat(document.getElementById("ZFin").value) || 0
+};
+
+
+
+  // 🔁 Choix entre POST (ajout) ou PUT (modification)
+  let url = "/api/routes/simple";
+  let method = "POST";
+
+  if (mode === "edit" && routeId) {
+    url = `/api/routes/simple/${routeId}`;
+    method = "PUT";
+  }
+
+  const r = await fetch(url, {
+    method: method,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(route)
+  });
+
+  const j = await r.json();
+
+  if (!r.ok) {
+    alert(j.message || "❌ Erreur lors de l’enregistrement");
+    return;
+  }
+
+  alert(j.message + (j.Longueur ? ` (Distance : ${j.Longueur.toFixed(2)} m)` : ""));
+
+  // Fermer la modale
+  const modalEl = document.getElementById("addRouteModal");
+  const modal = bootstrap.Modal.getInstance(modalEl);
+  modal.hide();
+
+  // Réinitialiser le formulaire
+  form.reset();
+  form.dataset.mode = "add";
+  form.dataset.editId = "";
+  document.querySelector("#routeForm button[type='submit']").disabled = true;
+  document.getElementById("directionContainer").style.display = "none";
+
+  // Rafraîchir la liste
+  await loadRoutes();
+});
+
+
+
+// Liste des routes
+async function loadRoutes(){
+  const r = await fetch("/api/routes/simple");
+  if(!r.ok){
+    document.getElementById("routesTable").innerHTML="❌ Erreur de chargement";
+    return;
+  }
+  const routes = await r.json();
+  window.DATA_ROUTES = routes;
+
+
+  let html = `<table class="table table-bordered table-sm text-center align-middle">
+    <thead class="table-light">
+  <tr>
+    <th>Nom</th>
+    <th>Zone / Allée / Dépl. / Niv. Début</th>
+    <th>Zone / Allée / Dépl. / Niv. Fin</th>
+    <th>Coord. Début (X/Y/Z)</th>
+    <th>Coord. Fin (X/Y/Z)</th>
+    <th>Largeur (m)</th>
+    <th>Engin</th>
+    <th>Sens</th>
+    <th>Actions</th>
+  </tr>
+</thead>
+<tbody>`;
+
+  routes.forEach(rt=>{
+  const sensTxt = rt.SensUnique ? 
+    (rt.SensDirection === "decroissant" ? "⬇️ Décroissant" : "⬆️ Croissant") : 
+    "↔️ Double sens";
+
+  html += `<tr>
+    <td>${rt.NomRoute||""}</td>
+    <td>${rt.ZoneDepart||""}-${rt.AlleeGauche||""}-${rt.DeplacementDeb||""}-${rt.NiveauDeb||""}</td>
+    <td>${rt.ZoneArrivee||""}-${rt.AlleeDroite||""}-${rt.DeplacementFin||""}-${rt.NiveauFin||""}</td>
+    <td>${(rt.XDeb ?? "").toFixed ? rt.XDeb.toFixed(2) : ""}, ${(rt.YDeb ?? "").toFixed ? rt.YDeb.toFixed(2) : ""}, ${(rt.ZDeb ?? "").toFixed ? rt.ZDeb.toFixed(2) : ""}</td>
+    <td>${(rt.XFin ?? "").toFixed ? rt.XFin.toFixed(2) : ""}, ${(rt.YFin ?? "").toFixed ? rt.YFin.toFixed(2) : ""}, ${(rt.ZFin ?? "").toFixed ? rt.ZFin.toFixed(2) : ""}</td>
+    <td>${rt.LargeurAllee ? rt.LargeurAllee.toFixed(2) : ""}</td>
+    <td>${rt.TypeEngin||""}</td>
+    <td>${sensTxt}</td>
+    <td>
+      <button class="btn btn-sm btn-primary me-1" onclick="editRoute('${rt.IdRoute}')">✏️</button>
+      <button class="btn btn-sm btn-danger" onclick="deleteRoute('${rt.IdRoute}')">🗑</button>
+    </td>
+  </tr>`;
+});
+
+
+  html += "</tbody></table>";
+  document.getElementById("routesTable").innerHTML = html;
+}
+
+
+
+async function deleteRoute(id){
+  if(!confirm("Supprimer cette route ?")) return;
+  await fetch(`/api/routes/simple/${id}`, {method:"DELETE"});
+  loadRoutes();
+}
+
+async function editRoute(id) {
+  // 🔹 Récupération des données déjà chargées
+  const res = await fetch("/api/routes/simple");
+  const all = await res.json();
+  const rt = all.find(x => x.IdRoute === id);
+  if (!rt) {
+    alert("Route introuvable");
+    return;
+  }
+
+  const form = document.getElementById("routeForm");
+  form.dataset.mode = "edit"; // 🟢 Indique qu’on est en mode édition
+  form.dataset.editId = id;   // 🧩 Stocke l’ID pour le PUT
+
+  // 🏷️ Met à jour le titre et le bouton
+  document.getElementById("routeModalTitle").textContent = "✏️ Modifier la route";
+  document.querySelector("#routeForm button[type='submit']").textContent = "💾 Enregistrer";
+
+  // === 🧱 Préremplir les champs de base ===
+  document.getElementById("NomRoute").value = rt.NomRoute || "";
+
+  // Déverrouiller les sélecteurs pour pouvoir insérer les valeurs
+  ["ZoneDeb","AlleeDeb","DeplacementDeb","NiveauDeb",
+   "ZoneFin","AlleeFin","DeplacementFin","NiveauFin",
+   "TypeEngin","SensUnique"].forEach(id => document.getElementById(id).disabled = false);
+
+  // === 🟢 Zones ===
+  document.getElementById("ZoneDeb").value = rt.ZoneDepart || "";
+  document.getElementById("ZoneFin").value = rt.ZoneArrivee || "";
+
+  // Charger dynamiquement les options de la zone début
+  const zdeb = rt.ZoneDepart;
+  if (zdeb) {
+    enable("AlleeDeb", true, alleesByZone(zdeb));
+    document.getElementById("AlleeDeb").value = rt.AlleeGauche || "";
+
+    const adeb = rt.AlleeGauche;
+    if (adeb) {
+      enable("DeplacementDeb", true, depsByZoneAllee(zdeb, adeb));
+      document.getElementById("DeplacementDeb").value = rt.DeplacementDeb || "";
+
+      const ddeb = rt.DeplacementDeb;
+      if (ddeb) {
+        enable("NiveauDeb", true, nivsByZoneAlleeDep(zdeb, adeb, ddeb));
+        document.getElementById("NiveauDeb").value = rt.NiveauDeb || "";
+      }
+    }
+  }
+
+  // Charger dynamiquement les options de la zone fin
+  const zfin = rt.ZoneArrivee;
+  if (zfin) {
+    enable("AlleeFin", true, alleesByZone(zfin));
+    document.getElementById("AlleeFin").value = rt.AlleeDroite || "";
+
+    const afin = rt.AlleeDroite;
+    if (afin) {
+      enable("DeplacementFin", true, depsByZoneAllee(zfin, afin));
+      document.getElementById("DeplacementFin").value = rt.DeplacementFin || "";
+
+      const dfin = rt.DeplacementFin;
+      if (dfin) {
+        enable("NiveauFin", true, nivsByZoneAlleeDep(zfin, afin, dfin));
+        document.getElementById("NiveauFin").value = rt.NiveauFin || "";
+      }
+    }
+  }
+
+  // === ⚙️ Autres champs ===
+  document.getElementById("LargeurAllee").value = rt.LargeurAllee || "";
+  document.getElementById("TypeEngin").value = rt.TypeEngin || "";
+  document.getElementById("SensUnique").checked = rt.SensUnique || false;
+  document.getElementById("SensDirection").value = rt.SensDirection || "croissant";
+  document.getElementById("XDeb").value = rt.XDeb || "";
+  document.getElementById("YDeb").value = rt.YDeb || "";
+  document.getElementById("ZDeb").value = rt.ZDeb || "";
+  document.getElementById("XFin").value = rt.XFin || "";
+  document.getElementById("YFin").value = rt.YFin || "";
+  document.getElementById("ZFin").value = rt.ZFin || "";
+
+  // 🟢 Active le menu direction si sens unique
+  const dirSelect = document.getElementById("SensDirection");
+  dirSelect.disabled = !rt.SensUnique;
+  document.getElementById("directionContainer").style.display = rt.SensUnique ? "block" : "none";
+
+  // ✅ Ouvrir la modale
+  const modal = new bootstrap.Modal(document.getElementById("addRouteModal"));
+  modal.show();
+}
+
+
+
+initForm().then(loadRoutes);
+
+// 🧹 Réinitialiser le formulaire quand on ouvre la modale "Ajouter une route"
+document.getElementById("addRouteModal").addEventListener("show.bs.modal", (event) => {
+  const form = document.getElementById("routeForm");
+
+  // 🧠 Vérifie si on est en mode "ajout" (pas "édition")
+  const isEdit = form.dataset.mode === "edit";
+
+  if (!isEdit) {
+    document.getElementById("routeModalTitle").textContent = "➕ Nouvelle route";
+    document.querySelector("#routeForm button[type='submit']").textContent = "+ Ajouter";
+
+    // 🧹 Réinitialiser uniquement en mode ajout
+    form.reset();
+
+    [
+      "ZoneDeb","AlleeDeb","DeplacementDeb","NiveauDeb",
+      "ZoneFin","AlleeFin","DeplacementFin","NiveauFin",
+      "TypeEngin","SensDirection"
+    ].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) {
+        el.value = "";
+        el.disabled = true;
+      }
+    });
+
+    document.getElementById("directionContainer").style.display = "none";
+    document.getElementById("SensUnique").checked = false;
+    document.getElementById("SensUnique").disabled = true;
+    document.querySelector("#routeForm button[type='submit']").disabled = true;
+
+    initForm(); // recharge les zones et engins
+  }
+});
+
+
+
+document.getElementById("SensUnique").addEventListener("change", e=>{
+  const dirContainer = document.getElementById("directionContainer");
+  const dirSelect = document.getElementById("SensDirection");
+
+  const checked = e.target.checked;
+  dirContainer.style.display = checked ? "block" : "none";
+  dirSelect.disabled = !checked;  // 🔧 active/désactive le menu
+});
+
+
+function prepareAddRoute() {
+  const form = document.getElementById("routeForm");
+  form.dataset.mode = "add"; // pour indiquer qu'on ouvre en mode ajout
+}
+
+function recalcDistance() {
+  const x1 = parseFloat(document.getElementById("XDeb").value || 0);
+  const y1 = parseFloat(document.getElementById("YDeb").value || 0);
+  const z1 = parseFloat(document.getElementById("ZDeb").value || 0);
+  const x2 = parseFloat(document.getElementById("XFin").value || 0);
+  const y2 = parseFloat(document.getElementById("YFin").value || 0);
+  const z2 = parseFloat(document.getElementById("ZFin").value || 0);
+  const dist = Math.sqrt((x2-x1)**2 + (y2-y1)**2 + (z2-z1)**2);
+  alert(`Distance recalculée : ${dist.toFixed(3)} m`);
+}
+
+
+</script>
+
+{% endblock %}

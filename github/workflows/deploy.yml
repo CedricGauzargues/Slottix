@@ -1,0 +1,56 @@
+name: 🚀 Deploy Flask to Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  PROJECT_ID: slottix
+  REGION: europe-west1
+  REPOSITORY: flask-repo
+  SERVICE_NAME: slottix-flask
+  IMAGE: europe-west1-docker.pkg.dev/slottix/flask-repo/slottix-flask
+  INSTANCE_CONNECTION_NAME: slottix:europe-west1:slottix-db
+  DB_USER: slottix_web
+  DB_NAME: entrepot_optimisation
+  DB_SECRET: PG_PASSWORD
+
+jobs:
+  deploy:
+    name: 🧱 Build & Deploy to Cloud Run
+    runs-on: ubuntu-latest
+
+    steps:
+      # 🧩 1. Checkout du code source
+      - name: 🛠️ Checkout repository
+        uses: actions/checkout@v3
+
+      # 🔐 2. Authentification Google Cloud via clé JSON
+      - name: 🔐 Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      # ⚙️ 3. Configure le SDK gcloud
+      - name: ⚙️ Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.PROJECT_ID }}
+
+      # 🐳 4. Build & Push image vers Artifact Registry
+      - name: 🐳 Build & Push Docker image
+        run: |
+          gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev --quiet
+          gcloud builds submit --tag ${{ env.IMAGE }}
+
+      # 🚀 5. Déploiement sur Cloud Run
+      - name: 🚀 Deploy to Cloud Run
+        run: |
+          gcloud run deploy ${{ env.SERVICE_NAME }} \
+            --image ${{ env.IMAGE }} \
+            --region ${{ env.REGION }} \
+            --platform managed \
+            --add-cloudsql-instances=${{ env.INSTANCE_CONNECTION_NAME }} \
+            --set-env-vars=PROJECT_ID=${{ env.PROJECT_ID }},DB_SECRET=${{ env.DB_SECRET }},DB_USER=${{ env.DB_USER }},DB_NAME=${{ env.DB_NAME }} \
+            --allow-unauthenticated

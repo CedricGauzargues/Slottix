@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container mt-4">
+  <div class="card shadow-lg">
+    <div class="card-header bg-primary text-white">
+      <h2 class="h4 mb-0">🚚 Type de déplacement</h2>
+    </div>
+    <div class="card-body">
+
+      <h4>Liste des types</h4>
+      <div class="table-responsive">
+        <table class="table table-striped">
+          <thead>
+            <tr>
+              <th>Type de déplacement</th>
+              <th>Désignation</th>
+              <th>Vitesse (km/h)</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in types %}
+            <tr>
+              <td>{{ row['Type de déplacement'] }}</td>
+              <td>{{ row['Désignation'] }}</td>
+              <td>{{ row['Vitesse (km/h)'] }}</td>
+              <td>
+                <!-- Bouton supprimer -->
+                <form method="POST" action="{{ url_for('param_type_deplacement') }}" style="display:inline;">
+                  <input type="hidden" name="delete_type" value="{{ row['Type de déplacement'] }}">
+                  <button type="submit" class="btn btn-sm btn-danger">🗑️ Supprimer</button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <hr>
+      <h4>➕ Ajouter un type</h4>
+      <form method="POST">
+        <div class="mb-3">
+          <label class="form-label">Type de déplacement</label>
+          <input type="text" name="TypeDep" class="form-control" required>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Désignation</label>
+          <input type="text" name="Description" class="form-control">
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Vitesse (km/h)</label>
+          <input type="number" step="0.1" name="Vitesse" class="form-control">
+        </div>
+        <button type="submit" class="btn btn-success">Ajouter</button>
+      </form>
+
+    </div>
+  </div>
+</div>
+{% endblock %}
