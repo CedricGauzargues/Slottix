@@ -1,0 +1,7 @@
+# Ignorer fichiers sensibles et temporaires
+credentials_slottix.json
+__pycache__/
+*.pyc
+uploads/
+*.log
+
