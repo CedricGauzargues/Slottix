@@ -1,0 +1,37 @@
+name: 🚀 Deploy to Google Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    name: Deploy Flask app
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 🧰 Checkout code
+        uses: actions/checkout@v4
+
+      - name: 🪣 Set up Google Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          export_default_credentials: true
+
+      - name: 🐳 Build and push Docker image
+        run: |
+          gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev --quiet
+          docker build -t ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/flask-repo/slottix-flask .
+          docker push ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/flask-repo/slottix-flask
+
+      - name: 🚀 Deploy to Cloud Run
+        run: |
+          gcloud run deploy slottix-flask \
+            --image ${{ secrets.GCP_REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/flask-repo/slottix-flask \
+            --region ${{ secrets.GCP_REGION }} \
+            --platform managed \
+            --allow-unauthenticated \
+            --port 8080
